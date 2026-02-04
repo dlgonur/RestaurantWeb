@@ -1,0 +1,228 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - RestaurantWeb</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/RestaurantWeb.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        @await Html.PartialAsync("_Toast")
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">RestaurantWeb</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <!-- SOL MENÜ -->
+                    <ul class="navbar-nav flex-grow-1">
+
+                        <!-- Admin her şeyi görür -->
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Kategoriler" asp-action="Index">Kategoriler</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Urunler" asp-action="Index">Ürünler</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Masalar" asp-action="Index">Masalar</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Rezervasyonlar" asp-action="Index">Rezervasyonlar</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Personeller" asp-action="Index">Personeller</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Siparisler" asp-action="Index">Siparişler</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Raporlar" asp-action="Dashboard">Raporlar</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Mutfak" asp-action="Index">Mutfak</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="PersonelLoglari" asp-action="Index">Personel Logları</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Backup" asp-action="Index">Backup</a>
+                            </li>
+
+
+                        }
+                        else
+                        {
+                            <!-- Kasa -->
+                            @if (User.IsInRole("Kasa"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Masalar" asp-action="Index">Masalar</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Rezervasyonlar" asp-action="Index">Rezervasyonlar</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Siparisler" asp-action="Index">Siparişler</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Raporlar" asp-action="Dashboard">Raporlar</a>
+                                </li>
+                            }
+
+                            <!-- Garson -->
+                            @if (User.IsInRole("Garson"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Masalar" asp-action="Index">Masalar</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Siparisler" asp-action="Index">Siparişler</a>
+                                </li>
+                            }
+
+                            <!-- Mutfak -->
+                            @if (User.IsInRole("Mutfak"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Mutfak" asp-action="Index">Mutfak</a>
+                                </li>
+                            }
+                        }
+
+                    </ul>
+
+                    <!-- SAĞ ÜST: AUTH -->
+                    <ul class="navbar-nav ms-auto">
+                        @if (User?.Identity?.IsAuthenticated ?? false)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle d-flex align-items-center gap-2"
+                                   href="#"
+                                   id="userMenu"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    <span class="fw-semibold">@User.Identity!.Name</span>
+                                </a>
+
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                                    <li>
+                                        <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                                            Çıkış
+                                        </button>
+                                    </li>
+                                </ul>
+                            </li>
+
+                            <!-- Logout form (modal onayı burayı submit eder) -->
+                            <li class="nav-item d-none">
+                                <form id="logoutForm" asp-controller="Auth" asp-action="Logout" method="post">
+                                    @Html.AntiForgeryToken()
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Auth" asp-action="Login">
+                                    Giriş
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <!-- LOGOUT MODAL -->
+        @if (User?.Identity?.IsAuthenticated ?? false)
+        {
+            <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="logoutModalLabel">Çıkış Yap</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                        </div>
+                        <div class="modal-body">
+                            Çıkış yapmak istediğinize emin misiniz?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                            <button type="button" class="btn btn-danger" id="btnConfirmLogout">Çıkış Yap</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                document.addEventListener("DOMContentLoaded", function () {
+                    const btn = document.getElementById("btnConfirmLogout");
+                    const form = document.getElementById("logoutForm");
+                    if (btn && form) {
+                        btn.addEventListener("click", function () {
+                            form.submit();
+                        });
+                    }
+                });
+            </script>
+        }
+    </header>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    @if (TempData["Success"] != null || TempData["Error"] != null || TempData["Info"] != null)
+    {
+        var msg = TempData["Success"] ?? TempData["Error"] ?? TempData["Info"];
+        var type = TempData["Success"] != null ? "bg-success"
+        : TempData["Error"] != null ? "bg-danger"
+        : "bg-info";
+
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+            <div id="appToast" class="toast align-items-center text-white @type border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        @msg
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                var el = document.getElementById("appToast");
+                if (el) {
+                    var t = new bootstrap.Toast(el, { delay: 2500 });
+                    t.show();
+                }
+            });
+        </script>
+    }
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2026 - RestaurantWeb - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

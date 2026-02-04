@@ -1,0 +1,134 @@
+﻿@model RestaurantWeb.Models.ViewModels.RezervasyonListVm
+@using RestaurantWeb.Models
+
+@{
+    ViewData["Title"] = "Rezervasyonlar";
+}
+
+<h2>Rezervasyonlar</h2>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-2">
+        <label class="form-label">Başlangıç</label>
+        <input type="date" name="baslangic" class="form-control"
+               value="@Model.Baslangic?.ToString("yyyy-MM-dd")" />
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label">Bitiş</label>
+        <input type="date" name="bitis" class="form-control"
+               value="@Model.Bitis?.ToString("yyyy-MM-dd")" />
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label">Durum</label>
+        <select name="durum" class="form-select">
+            <option value="" selected="@(Model.Durum == null)">Tümü</option>
+            <option value="0" selected="@(Model.Durum == 0)">Aktif</option>
+            <option value="1" selected="@(Model.Durum == 1)">İptal</option>
+            <option value="2" selected="@(Model.Durum == 2)">Kullanıldı</option>
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label">Masa No</label>
+        <input type="number" name="masaNo" class="form-control" placeholder="örn 5"
+               value="@(Model.MasaNo?.ToString() ?? "")" min="1" />
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label">Arama</label>
+        <input type="text" name="q" class="form-control" placeholder="Müşteri adı / Telefon"
+               value="@Model.Q" />
+    </div>
+
+    <div class="col-md-1">
+        <label class="form-label">Limit</label>
+        <input type="number" name="limit" class="form-control"
+               value="@Model.Limit" min="1" max="1000" />
+    </div>
+
+    <div class="col-md-1 d-grid">
+        <button class="btn btn-primary">Filtrele</button>
+    </div>
+
+    <div class="col-12">
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Temizle</a>
+    </div>
+</form>
+
+@if (Model.Items == null || Model.Items.Count == 0)
+{
+    <div class="alert alert-info">Kayıt yok.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Tarih</th>
+                    <th>Masa</th>
+                    <th>Müşteri</th>
+                    <th>Telefon</th>
+                    <th class="text-end">Kişi</th>
+                    <th>Durum</th>
+                    <th class="text-end">Aksiyon</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var x in Model.Items)
+                {
+                    var badge = x.Durum == 0 ? "bg-success"
+                    : x.Durum == 1 ? "bg-secondary"
+                    : "bg-primary"; 
+
+                    var durumText = x.Durum == 0 ? "Aktif"
+                    : x.Durum == 1 ? "İptal"
+                    : "Kullanıldı"; 
+
+
+                    <tr>
+                        <td>@x.RezervasyonTarihi.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@x.MasaNo</td>
+                        <td>@x.MusteriAd</td>
+                        <td>@(x.Telefon ?? "-")</td>
+                        <td class="text-end">@(x.KisiSayisi?.ToString() ?? "-")</td>
+                        <td>
+                            <span class="badge @badge">@durumText</span>
+                        </td>
+                        <td class="text-end">
+                            @if (x.Durum == 0)
+                            {
+                                <form asp-action="Cancel" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@x.Id" />
+                                    <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm"
+                                            onclick="return confirm('Rezervasyon iptal edilsin mi?');">
+                                        İptal Et
+                                    </button>
+                                </form>
+
+                                <form asp-action="MarkUsed" method="post" class="d-inline ms-1">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@x.Id" />
+                                    <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                    <button type="submit" class="btn btn-outline-success btn-sm"
+                                            onclick="return confirm('Rezervasyon kullanıldı olarak işaretlensin mi?');">
+                                        Kullanıldı
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">-</span>
+                            }
+
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

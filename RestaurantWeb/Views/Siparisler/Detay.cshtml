@@ -1,0 +1,108 @@
+﻿@model RestaurantWeb.Models.ViewModels.SiparisDetayVm
+@using System.Linq
+
+<h2>Sipariş Detayı - #@Model.SiparisId (Masa @Model.MasaNo)</h2>
+
+<div class="mb-3">
+    <a class="btn btn-outline-secondary" asp-action="Index">Geri</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card p-3">
+            <div><strong>Durum:</strong> @(Model.Durum == 0 ? "Açık" : "Kapalı")</div>
+            <div><strong>Açılış:</strong> @Model.AcildiTarihi.ToString("yyyy-MM-dd HH:mm")</div>
+            <div><strong>Kapanış:</strong> @(Model.KapandiTarihi?.ToString("yyyy-MM-dd HH:mm") ?? "-")</div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card p-3">
+            <div><strong>Ara Toplam:</strong> @Model.AraToplam.ToString("N2") ₺</div>
+            <div><strong>İskonto Oranı:</strong> @Model.IskontoOrani.ToString("N2") %</div>
+            <div><strong>İskonto Tutar:</strong> @Model.IskontoTutar.ToString("N2") ₺</div>
+            <div class="mt-2"><strong>Toplam:</strong> @Model.Toplam.ToString("N2") ₺</div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card p-3">
+            <div><strong>Ödeme:</strong> @(string.IsNullOrWhiteSpace(Model.OdemeYontemi) ? "-" : Model.OdemeYontemi)</div>
+            <div><strong>Tutar:</strong> @Model.OdemeTutar.ToString("N2") ₺</div>
+            <div><strong>Tarih:</strong> @(Model.OdemeTarihi?.ToString("yyyy-MM-dd HH:mm") ?? "-")</div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">Sipariş Kalemleri</div>
+    <div class="card-body">
+        @if (Model.Kalemler == null || Model.Kalemler.Count == 0)
+        {
+            <div class="text-muted">Kalem bulunamadı.</div>
+        }
+        else
+        {
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        <th>Ürün</th>
+                        <th class="text-center">Adet</th>
+                        <th class="text-end">Birim</th>
+                        <th class="text-end">Tutar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var k in Model.Kalemler)
+                    {
+                        <tr>
+                            <td>@k.UrunAd</td>
+                            <td class="text-center">@k.Adet</td>
+                            <td class="text-end">@k.BirimFiyat.ToString("N2") ₺</td>
+                            <td class="text-end">@k.SatirToplam.ToString("N2") ₺</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="3" class="text-end">Toplam:</td>
+                        <td class="text-end">@Model.Kalemler.Sum(x => x.SatirToplam).ToString("N2") ₺</td>
+                    </tr>
+                </tfoot>
+            </table>
+        }
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>İşlem Geçmişi (SiparisLog)</span>
+        <button class="btn btn-sm btn-outline-secondary" id="btnLogRefresh" type="button">Yenile</button>
+    </div>
+    <div class="card-body" id="logContainer">
+        <div class="text-muted">Yükleniyor...</div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const siparisId = @Model.SiparisId;
+            const container = document.getElementById("logContainer");
+            const btn = document.getElementById("btnLogRefresh");
+
+            async function loadLogs() {
+                const res = await fetch(`/Siparisler/LogPartial?siparisId=${siparisId}`);
+                if (!res.ok) {
+                    container.innerHTML = '<div class="text-danger">Loglar yüklenemedi.</div>';
+                    return;
+                }
+                container.innerHTML = await res.text();
+            }
+
+            if (btn) btn.addEventListener("click", loadLogs);
+            loadLogs();
+        })();
+    </script>
+}
+

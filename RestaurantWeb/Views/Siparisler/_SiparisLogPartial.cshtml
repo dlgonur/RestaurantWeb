@@ -1,0 +1,60 @@
+﻿@model List<RestaurantWeb.Models.ViewModels.SiparisLogItemVm>
+
+@functions {
+    string ActionTr(string a)
+    {
+        return a switch
+        {
+            "ITEM_STATUS" => "Kalem Durumu",
+            "DISCOUNT" => "İskonto",
+            "PAYMENT" => "Ödeme",
+            "CLOSE" => "Sipariş Kapatma",
+            _ => a
+        };
+    }
+
+    string StatusTr(string? v)
+    {
+        return v switch
+        {
+            "0" => "Bekliyor",
+            "1" => "Hazırlanıyor",
+            "2" => "Hazır",
+            "3" => "Servise Çıktı",
+            _ => v ?? "-"
+        };
+    }
+}
+
+@if (Model == null || Model.Count == 0)
+{
+    <div class="text-muted">İşlem geçmişi yok.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Tarih</th>
+                    <th>İşlem</th>
+                    <th>Eski</th>
+                    <th>Yeni</th>
+                    <th>Kullanıcı</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var x in Model)
+                {
+                    <tr>
+                        <td>@x.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@ActionTr(x.Action)</td>
+                        <td>@(x.Action == "ITEM_STATUS" ? StatusTr(x.OldValue) : (x.OldValue ?? "-"))</td>
+                        <td>@(x.Action == "ITEM_STATUS" ? StatusTr(x.NewValue) : (x.NewValue ?? "-"))</td>
+                        <td>@(string.IsNullOrWhiteSpace(x.ActorUsername) ? "-" : x.ActorUsername)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

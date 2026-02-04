@@ -1,0 +1,28 @@
+﻿@model RestaurantWeb.Models.ViewModels.MasaCreateVm
+
+<h2>Yeni Masa</h2>
+
+<form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="MasaNo" class="form-label">Masa No</label>
+        <input asp-for="MasaNo" class="form-control" type="number" min="1" />
+        <span asp-validation-for="MasaNo" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Kapasite" class="form-label">Kapasite</label>
+        <input asp-for="Kapasite" class="form-control" type="number" min="1" />
+        <span asp-validation-for="Kapasite" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Kaydet</button>
+    <a asp-action="Index" class="btn btn-secondary">İptal</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

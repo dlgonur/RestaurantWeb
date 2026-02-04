@@ -1,0 +1,51 @@
+﻿@model RestaurantWeb.Models.ViewModels.SiparisAdisyonVm
+@using System.Linq
+
+@if (Model == null || Model.Items == null || Model.Items.Count == 0)
+{
+    <div class="alert alert-info mb-0">Henüz kaydedilmiş sipariş yok.</div>
+}
+else
+{
+    <table class="table table-sm table-striped mb-2">
+        <thead>
+            <tr>
+                <th>Ürün</th>
+                <th class="text-center">Adet</th>
+                <th class="text-end">Tutar</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td>@item.UrunAd</td>
+                    <td class="text-center">@item.Adet</td>
+                    <td class="text-end">@item.SatirToplam.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="border-top pt-2">
+        <div class="d-flex justify-content-between">
+            <span>Ara Toplam:</span>
+            <strong>@Model.AraToplam.ToString("N2")</strong>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <span>İskonto (%):</span>
+            <strong>@Model.IskontoOran.ToString("N2")</strong>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <span>İskonto Tutarı:</span>
+            <strong>@Model.IskontoTutar.ToString("N2")</strong>
+        </div>
+
+        <div class="d-flex justify-content-between fs-5 mt-1">
+            <span>Genel Toplam:</span>
+            <strong>@Model.Toplam.ToString("N2")</strong>
+        </div>
+    </div>
+}

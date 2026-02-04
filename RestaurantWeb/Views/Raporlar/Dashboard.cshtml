@@ -1,0 +1,273 @@
+﻿@model RestaurantWeb.Models.ViewModels.DashboardVm
+@using System.Linq
+@using System.Globalization
+
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<h2>Kazanç Özeti</h2>
+
+<!-- Filtre + hızlı linkler + PDF butonu (PDF'e GİRMEZ) -->
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-sm-4 col-md-3">
+        <label class="form-label">Başlangıç</label>
+        <input type="date" name="baslangic" class="form-control"
+               value="@Model.Baslangic.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-sm-4 col-md-3">
+        <label class="form-label">Bitiş</label>
+        <input type="date" name="bitis" class="form-control"
+               value="@Model.Bitis.ToString("yyyy-MM-dd")" />
+    </div>
+
+    <div class="col-sm-4 col-md-2 d-grid">
+        <button class="btn btn-primary">Uygula</button>
+    </div>
+
+    <div class="col-12 col-md-4 d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-secondary"
+           asp-action="Dashboard"
+           asp-route-baslangic="@DateTime.Today.ToString("yyyy-MM-dd")"
+           asp-route-bitis="@DateTime.Today.ToString("yyyy-MM-dd")">Bugün</a>
+
+        <a class="btn btn-outline-secondary"
+           asp-action="Dashboard"
+           asp-route-baslangic="@DateTime.Today.AddDays(-6).ToString("yyyy-MM-dd")"
+           asp-route-bitis="@DateTime.Today.ToString("yyyy-MM-dd")">Son 7 Gün</a>
+
+        <a class="btn btn-outline-secondary"
+           asp-action="Dashboard"
+           asp-route-baslangic="@(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).ToString("yyyy-MM-dd"))"
+           asp-route-bitis="@(DateTime.Today.ToString("yyyy-MM-dd"))">
+            Bu Ay
+        </a>
+        <a class="btn btn-outline-success"
+           asp-action="ExportExcel"
+           asp-route-baslangic="@Model.Baslangic.ToString("yyyy-MM-dd")"
+           asp-route-bitis="@Model.Bitis.ToString("yyyy-MM-dd")"
+           asp-route-mode="@Model.Mode">
+            Excel İndir
+        </a>
+
+    </div>
+
+    <div class="col-12 d-flex justify-content-end">
+        <button type="button" id="btnPdf" class="btn btn-outline-danger">
+            PDF Al
+        </button>
+    </div>
+
+</form>
+
+<!-- PDF'e girecek ana alan -->
+<div id="reportArea"
+     data-start="@Model.Baslangic.ToString("yyyy-MM-dd")"
+     data-end="@Model.Bitis.ToString("yyyy-MM-dd")">
+
+    <!-- KPI kartları -->
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h6>Toplam Ciro</h6>
+                <h3>@Model.ToplamCiro.ToString("N2") ₺</h3>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h6>Sipariş Sayısı</h6>
+                <h3>@Model.SiparisSayisi</h3>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h6>Ortalama Sepet</h6>
+                <h3>@Model.OrtalamaSepet.ToString("N2") ₺</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trend -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Günlük Ciro Trend</h5>
+
+            @if (Model.GunlukCiro == null || Model.GunlukCiro.Count == 0)
+            {
+                <div class="text-muted">Seçilen tarih aralığında veri yok.</div>
+            }
+            else
+            {
+                <canvas id="ciroChart" height="90"></canvas>
+            }
+        </div>
+    </div>
+
+    <!-- Ödeme dağılımı -->
+    <div class="mt-4">
+        <h4>Ödeme Dağılımı</h4>
+
+        @if (Model.OdemeDagilimi == null || Model.OdemeDagilimi.Count == 0)
+        {
+            <div class="text-muted">Seçilen tarih aralığında ödeme kaydı yok.</div>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var kv in Model.OdemeDagilimi)
+                {
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>@kv.Key</span>
+                        <strong>@kv.Value.ToString("N2") ₺</strong>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    <!-- Kategori Bazlı Ciro -->
+    <div class="card mt-4">
+        <div class="card-header">
+            Kategori Bazlı Ciro
+        </div>
+        <div class="card-body">
+            @if (Model.KategoriCiro == null || Model.KategoriCiro.Count == 0)
+            {
+                <div class="text-muted">Seçilen aralıkta kategori verisi yok.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Kategori</th>
+                                <th class="text-end">Adet</th>
+                                <th class="text-end">Brüt Ciro</th>
+                                <th class="text-end">Net Ciro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var x in Model.KategoriCiro)
+                            {
+                                <tr>
+                                    <td>@x.KategoriAd</td>
+                                    <td class="text-end">@x.ToplamAdet</td>
+                                    <td class="text-end">@x.BrutCiro.ToString("N2") ₺</td>
+                                    <td class="text-end fw-bold">@x.NetCiro.ToString("N2") ₺</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Personel Performansı -->
+    <div class="card mt-4">
+        <div class="card-header">
+            Personel Performansı
+        </div>
+        <div class="card-body">
+            @if (Model.PersonelPerformans == null || Model.PersonelPerformans.Count == 0)
+            {
+                <div class="text-muted">Seçilen aralıkta personel performans verisi yok.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Personel</th>
+                                <th class="text-end">Sipariş</th>
+                                <th class="text-end">Ciro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.PersonelPerformans)
+                            {
+                                <tr>
+                                    <td>@p.AdSoyad</td>
+                                    <td class="text-end">@p.SiparisSayisi</td>
+                                    <td class="text-end fw-bold">@p.Ciro.ToString("N2") ₺</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Top 10 -->
+    <div class="card mt-4">
+        <div class="card-header">
+            En Çok Satan Ürünler (Top 10)
+        </div>
+        <div class="card-body">
+            @if (Model.TopUrunler == null || Model.TopUrunler.Count == 0)
+            {
+                <div class="text-muted">Seçilen aralıkta veri yok.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Ürün</th>
+                                <th class="text-end">Adet</th>
+                                <th class="text-end">Ciro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var i = 1;
+                                foreach (var x in Model.TopUrunler)
+                                {
+                                    <tr>
+                                        <td>@i</td>
+                                        <td>@x.UrunAd</td>
+                                        <td class="text-end">@x.Adet</td>
+                                        <td class="text-end">@x.Ciro.ToString("N2") ₺</td>
+                                    </tr>
+                                    i++;
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    @if (Model.GunlukCiro != null && Model.GunlukCiro.Count > 0)
+    {
+        <script>
+            window.ciroChartData = {
+                labels: [
+                    @Html.Raw(string.Join(",", Model.GunlukCiro.Select(x => $"\"{x.Gun:yyyy-MM-dd}\"")))
+                ],
+                data: [
+                    @Html.Raw(string.Join(",", Model.GunlukCiro.Select(x => x.Ciro.ToString(CultureInfo.InvariantCulture))))
+                ]
+            };
+        </script>
+    }
+
+    <script src="~/js/dashboard.js"></script>
+}

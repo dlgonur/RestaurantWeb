@@ -1,0 +1,63 @@
+﻿@model List<RestaurantWeb.Models.ViewModels.MutfakSiparisVm>
+
+@if (Model == null || Model.Count == 0)
+{
+    <div class="alert alert-secondary">Bekleyen sipariş yok.</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var s in Model)
+        {
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between">
+                        <div>
+                            <strong>Masa @s.MasaNo</strong> | Sipariş #@s.SiparisId
+                        </div>
+                        <div class="text-muted">
+                            @s.OlusturmaTarihi.ToString("HH:mm")
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group">
+                            @foreach (var k in s.Kalemler)
+                            {
+                                string badge;
+                                string durumText;
+
+                                if (k.Durum == 0) { badge = "bg-secondary"; durumText = "Bekliyor"; }
+                                else if (k.Durum == 1) { badge = "bg-warning text-dark"; durumText = "Hazırlanıyor"; }
+                                else if (k.Durum == 2) { badge = "bg-success"; durumText = "Hazır"; }
+                                else { badge = "bg-info text-dark"; durumText = "Servise Çıktı"; }
+
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div><strong>@k.UrunAd</strong> x @k.Adet</div>
+                                        <span class="badge @badge">@durumText</span>
+                                    </div>
+                                    <div class="btn-group btn-group-sm">
+                                        @if (k.Durum == (short)RestaurantWeb.Models.SiparisKalemDurumu.Bekliyor)  // ★
+                                        {
+                                            <button class="btn btn-outline-warning" data-kalem="@k.KalemId" data-durum="1">Hazırlanıyor</button>
+                                        }
+                                        else if (k.Durum == (short)RestaurantWeb.Models.SiparisKalemDurumu.Hazirlaniyor) // ★
+                                        {
+                                            <button class="btn btn-outline-success" data-kalem="@k.KalemId" data-durum="2">Hazır</button>
+                                        }
+                                        else if (k.Durum == (short)RestaurantWeb.Models.SiparisKalemDurumu.Hazir) // ★
+                                        {
+                                            <button class="btn btn-outline-primary" data-kalem="@k.KalemId" data-durum="3">Servise Çıktı</button>
+                                        }
+                                    </div>
+
+                                </li>
+                            }
+
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

@@ -1,0 +1,150 @@
+﻿@model List<RestaurantWeb.Models.ViewModels.MasaBoardItemVm>
+@using RestaurantWeb.Models
+@using System.Linq
+
+<h2>Masa Yönetimi</h2>
+
+@* KPI Bar *@
+<div class="row g-2 mb-3">
+    <div class="col-12 col-md-4">
+        <div class="card p-3">
+            <div class="text-muted">Anlık Boş (Walk-in)</div>
+            <div class="fs-3 fw-bold">@ViewBag.WalkinBosMasa</div>
+            <div class="small text-muted">Aktif masa: @ViewBag.AktifMasa</div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="card p-3">
+            <div class="text-muted">Fiziksel Doluluk</div>
+            <div class="fs-3 fw-bold">@ViewBag.FizikselDoluluk%</div>
+            <div class="small text-muted">Dolu: @ViewBag.DoluMasa / @ViewBag.AktifMasa</div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="card p-3">
+            <div class="text-muted">Efektif Doluluk (Walk-in)</div>
+            <div class="fs-3 fw-bold">@ViewBag.EfektifDoluluk%</div>
+            <div class="small text-muted">
+                Dolu + Blokeli boş: @(ViewBag.DoluMasa + ViewBag.BlokeliBosMasa) / @ViewBag.AktifMasa
+            </div>
+        </div>
+    </div>
+</div>
+
+@* // ⭐ MasaDolulukOrani: KPI bar eklendi *@
+
+
+<div class="mb-3 d-flex gap-2">
+    <a class="btn btn-outline-secondary" asp-action="Index">CRUD Liste</a>
+</div>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info">Henüz masa kaydı bulunmuyor.</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var m in Model.OrderBy(x => x.MasaNo))
+        {
+            var reserveTabIndex = m.AktifMi ? "0" : "-1"; 
+            var reserveAriaDisabled = m.AktifMi ? "false" : "true"; 
+            var badgeClass = m.DurumEfektif switch
+            {
+                MasaDurumu.Bos => "bg-success",
+                MasaDurumu.Dolu => "bg-danger",
+                MasaDurumu.Rezerve => "bg-warning text-dark",
+                _ => "bg-secondary"
+            };
+
+            bool isDisabled = (m.DurumEfektif != MasaDurumu.Dolu) && m.Blokeli; // *
+            string cardClass = m.AktifMi ? "" : "opacity-50";
+
+            int tabIndexValue = isDisabled ? -1 : 0;
+            string ariaDisabledValue = isDisabled ? "true" : "false";
+
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="card @cardClass">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Masa @m.MasaNo</h5>
+                            <span class="badge @badgeClass">@m.DurumEfektif</span>
+                        </div>
+
+                        <div class="mt-2 text-muted">Kapasite: @m.Kapasite</div>
+
+                        <div class="mt-1">
+                            Durum: <strong>@(m.AktifMi ? "Aktif" : "Pasif")</strong>
+                        </div>
+
+                        @* Rezervasyon bilgisi *@
+                        @if (m.RezTarih != null)
+                        {
+                            <div class="mt-2 small text-muted">
+                                Rez: <strong>@m.RezMusteriAd</strong> - @m.RezTarih.Value.ToString("dd.MM HH:mm")
+                                @if (m.DurumEfektif == MasaDurumu.Rezerve)
+                                {
+                                    <span class="ms-1 badge bg-warning text-dark">Bloke</span>
+                                }
+                            </div>
+
+                            @* Rezervasyon İptal *@
+                            @if (m.RezervasyonId != null && m.RezTarih != null && m.RezTarih.Value >= DateTime.Now) 
+                            {
+                                <form asp-controller="Masalar" asp-action="CancelReservation" method="post" class="mt-2">
+                                    @* * *@
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="rezervasyonId" value="@m.RezervasyonId" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Rezervasyonu İptal Et</button> 
+                                </form>
+                            }
+                        }
+
+
+                        <div class="mt-3 d-grid gap-2">
+
+                            @* BOS ise: POST ile Masalar/Open *@
+                            @if (m.DurumEfektif == MasaDurumu.Bos)
+                            {
+                                <form asp-controller="Masalar" asp-action="Open" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@m.Id" />
+                                    <button type="submit"
+                                            class="btn btn-primary"
+                                            @(isDisabled ? "disabled" : "")>
+                                        Masa Aç
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                @* Dolu/Rezerve ise: Siparişe Git *@
+                                <a class="btn btn-primary @(isDisabled ? "disabled" : "")"
+                                   asp-controller="Siparisler"
+                                   asp-action="Take"
+                                   asp-route-masaId="@m.Id"
+                                   tabindex="@tabIndexValue"
+                                   aria-disabled="@ariaDisabledValue">
+                                    Siparişe Git
+                                </a>
+                            }
+                   
+                            @* Rezerve Yap *@
+                            <a class="btn btn-outline-warning @(m.AktifMi ? "" : "disabled")"
+                               asp-controller="Masalar"
+                               asp-action="Reserve"
+                               asp-route-id="@m.Id"
+                               tabindex="@reserveTabIndex"
+                               aria-disabled="@reserveAriaDisabled">
+                                Rezerve Yap
+                            </a>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

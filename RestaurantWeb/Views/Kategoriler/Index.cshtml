@@ -1,0 +1,56 @@
+﻿@model List<RestaurantWeb.Models.Kategori>
+@using System.Linq
+
+<p>
+    <a class="btn btn-success" asp-action="Create">Yeni Kategori</a>
+</p>
+
+
+<h2>Kategoriler</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Ad</th>
+            <th>Aktif</th>
+            <th>Oluşturma Tarihi</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model == null || !Model.Any())
+        {
+            <tr>
+                <td colspan="5" class="text-center text-muted">
+                    Henüz kategori bulunmuyor.
+                </td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var k in Model)
+            {
+                <tr>
+                    <td>@k.Id</td>
+                    <td>@k.Ad</td>
+                    <td>@(k.AktifMi ? "Evet" : "Hayır")</td>
+                    <td>@k.OlusturmaTarihi.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@k.Id" class="btn btn-sm btn-warning">Düzenle</a>
+                        <form asp-action="ToggleAktif" method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@k.Id" />
+                            <button type="submit" class="btn btn-sm btn-secondary">
+                                @(k.AktifMi ? "Pasif Yap" : "Aktif Yap")
+                            </button>
+                        </form>
+                        <a asp-action="Delete" asp-route-id="@k.Id" class="btn btn-sm btn-danger">Sil</a>
+                    </td>
+
+                </tr>
+            }
+        }
+    </tbody>
+
+</table>

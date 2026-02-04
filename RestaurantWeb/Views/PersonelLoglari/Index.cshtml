@@ -1,0 +1,70 @@
+﻿@model RestaurantWeb.Models.ViewModels.PersonelLogListVm
+
+<h2>Personel İşlem Logları</h2>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-2">
+        <input type="date" name="baslangic" class="form-control" value="@Model.Baslangic?.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-md-2">
+        <input type="date" name="bitis" class="form-control" value="@Model.Bitis?.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-md-2">
+        <select name="aksiyon" class="form-select">
+            <option value="" selected="@(string.IsNullOrWhiteSpace(Model.Aksiyon))">Aksiyon (Tümü)</option>
+
+            <option value="CREATE" selected="@(Model.Aksiyon == "CREATE")">CREATE</option>
+            <option value="UPDATE" selected="@(Model.Aksiyon == "UPDATE")">UPDATE</option>
+            <option value="TOGGLE_ACTIVE" selected="@(Model.Aksiyon == "TOGGLE_ACTIVE")">TOGGLE_ACTIVE</option>
+            <option value="SET_PASSWORD" selected="@(Model.Aksiyon == "SET_PASSWORD")">SET_PASSWORD</option>
+        </select>
+
+    </div>
+    <div class="col-md-3">
+        <input type="text" name="target" class="form-control" placeholder="Hedef kullanıcı adı" value="@Model.TargetKullaniciAdi" />
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button class="btn btn-primary">Filtrele</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Temizle</a>
+    </div>
+</form>
+
+<table class="table table-sm table-striped">
+    <thead>
+        <tr>
+            <th>Tarih</th>
+            <th>Actor</th>
+            <th>Target</th>
+            <th>Aksiyon</th>
+            <th>Detay</th>
+            <th>IP</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var l in Model.Logs)
+        {
+            <tr>
+                <td>@l.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>@l.ActorKullaniciAdi</td>
+                <td>@l.TargetKullaniciAdi</td>
+                <td><strong>@l.Aksiyon</strong></td>
+                <td>
+                    @l.Aciklama
+                    @if (l.OldRol != l.NewRol && l.OldRol != null)
+                    {
+                        <div class="text-muted small">
+                            Rol: @l.OldRol → @l.NewRol
+                        </div>
+                    }
+                    @if (l.OldAktifMi != l.NewAktifMi && l.OldAktifMi != null)
+                    {
+                        <div class="text-muted small">
+                            Aktif: @l.OldAktifMi → @l.NewAktifMi
+                        </div>
+                    }
+                </td>
+                <td>@l.Ip</td>
+            </tr>
+        }
+    </tbody>
+</table>

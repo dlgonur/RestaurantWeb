@@ -1,0 +1,69 @@
+﻿@model List<RestaurantWeb.Models.Urun>
+@using System.Linq
+
+<h2>Ürünler</h2>
+
+<p>
+    <a class="btn btn-success" asp-action="Create">Yeni Ürün</a>
+</p>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Resim</th>
+            <th>Ad</th>
+            <th>Kategori</th>
+            <th>Fiyat</th>
+            <th>Stok</th>
+            <th>Aktif</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model == null || !Model.Any())
+        {
+            <tr>
+                <td colspan="8" class="text-center text-muted">
+                    Henüz ürün kaydı bulunmuyor.
+                </td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var u in Model)
+            {
+                <tr>
+                    <td>@u.Id</td>
+
+                    <td style="width:90px;">
+                        <img src="@Url.Action("Resim", "Urunler", new { id = u.Id })?v=@DateTime.Now.Ticks"
+                             alt="Ürün resmi"
+                             style="width:70px; height:70px; object-fit:cover; border-radius:8px; border:1px solid #ddd;"
+                             onerror="this.style.display='none';" />
+                    </td>
+
+                    <td>@u.Ad</td>
+                    <td>@u.KategoriAd</td>
+                    <td>@u.Fiyat.ToString("0.00")</td>
+                    <td>@u.Stok</td>
+                    <td>@(u.AktifMi ? "Evet" : "Hayır")</td>
+
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@u.Id" class="btn btn-sm btn-warning">Düzenle</a>
+
+                        <form asp-action="ToggleAktif" method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@u.Id" />
+                            <button type="submit" class="btn btn-sm btn-secondary">
+                                @(u.AktifMi ? "Pasif Yap" : "Aktif Yap")
+                            </button>
+                        </form>
+
+                        <a asp-action="Delete" asp-route-id="@u.Id" class="btn btn-sm btn-danger">Sil</a>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

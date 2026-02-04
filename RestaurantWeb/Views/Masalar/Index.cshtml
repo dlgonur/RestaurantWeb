@@ -1,0 +1,59 @@
+﻿@model List<RestaurantWeb.Models.Masa>
+@using System.Linq
+
+<h2>Masalar</h2>
+
+<p>
+    <a class="btn btn-success" asp-action="Create">Yeni Masa</a>
+</p>
+
+<div class="mb-3 d-flex gap-0">
+    <a class="btn btn-outline-secondary" asp-action="Board">Sipariş Oluştur</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Masa No</th>
+            <th>Kapasite</th>
+            <th>Aktif</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model == null || !Model.Any())
+        {
+            <tr>
+                <td colspan="5" class="text-center text-muted">
+                    Henüz masa kaydı bulunmuyor.
+                </td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var m in Model)
+            {
+                <tr>
+                    <td>@m.Id</td>
+                    <td>@m.MasaNo</td>
+                    <td>@m.Kapasite</td>
+                    <td>@(m.AktifMi ? "Evet" : "Hayır")</td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@m.Id" class="btn btn-sm btn-warning">Düzenle</a>
+
+                        <form asp-action="Toggle" method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@m.Id" />
+                            <button type="submit" class="btn btn-sm btn-secondary">
+                                @(m.AktifMi ? "Pasif Yap" : "Aktif Yap")
+                            </button>
+                        </form>
+
+                        <a asp-action="Delete" asp-route-id="@m.Id" class="btn btn-sm btn-danger">Sil</a>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

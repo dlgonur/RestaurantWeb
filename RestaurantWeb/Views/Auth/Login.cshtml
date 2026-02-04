@@ -1,0 +1,40 @@
+﻿@model RestaurantWeb.Models.ViewModels.LoginVm
+@{
+    ViewData["Title"] = "Giriş";
+    var returnUrl = (string?)ViewBag.ReturnUrl;
+}
+
+<h2>Giriş</h2>
+
+<form asp-action="Login" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+    <div class="mb-3">
+        <label asp-for="KullaniciAdi" class="form-label"></label>
+        <input asp-for="KullaniciAdi" class="form-control" autocomplete="username" />
+        <span asp-validation-for="KullaniciAdi" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Sifre" class="form-label"></label>
+        <input asp-for="Sifre" class="form-control" autocomplete="current-password" />
+        <span asp-validation-for="Sifre" class="text-danger"></span>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger">
+            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <div>@e.ErrorMessage</div>
+            }
+        </div>
+    }
+
+    <button class="btn btn-primary">Giriş Yap</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

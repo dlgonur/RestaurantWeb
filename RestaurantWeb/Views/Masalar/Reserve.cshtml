@@ -1,0 +1,98 @@
+﻿@model RestaurantWeb.Models.ViewModels.RezervasyonCreateVm
+
+<h2>Rezervasyon - Masa @ViewBag.MasaNo</h2>
+
+<div class="mb-3">
+    <a class="btn btn-outline-secondary" asp-action="Board">Geri</a>
+</div>
+
+<form asp-action="Reserve" method="post" class="card p-3">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="MasaId" />
+
+    <div class="mb-3">
+        <label class="form-label">Müşteri Adı</label>
+        <input asp-for="MusteriAd" class="form-control" />
+        <span asp-validation-for="MusteriAd" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <input asp-for="Telefon" class="form-control" id="telInput" placeholder="5XX XXX XX XX" />
+        <span asp-validation-for="Telefon" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Rezervasyon Tarihi/Saati</label>
+        <input asp-for="RezervasyonTarihi" type="datetime-local" class="form-control"
+               value="@Model.RezervasyonTarihi.ToString("yyyy-MM-ddTHH:mm")" />
+        <span asp-validation-for="RezervasyonTarihi" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Kişi Sayısı (opsiyonel)</label>
+        <input asp-for="KisiSayisi" type="number" class="form-control" />
+        <span asp-validation-for="KisiSayisi" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Notlar (opsiyonel)</label>
+        <textarea asp-for="Notlar" class="form-control" rows="3"></textarea>
+        <span asp-validation-for="Notlar" class="text-danger"></span>
+    </div>
+
+    <button class="btn btn-warning">Rezervasyon Oluştur</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        (function () {
+            const input = document.getElementById("telInput");
+            if (!input) return;
+
+            function formatTRMobile(raw) {
+                // sadece rakam
+                let digits = raw.replace(/\D/g, "");
+
+                // kullanıcı 0 ile başlarsa kırp (0555... -> 555...)
+                if (digits.startsWith("0")) digits = digits.slice(1);
+
+                // +90 vs yazarsa: 90 ile başlıyorsa kırp (90555... -> 555...)
+                if (digits.startsWith("90")) digits = digits.slice(2);
+
+                // 10 haneye kadar tut (5XXXXXXXXX)
+                digits = digits.slice(0, 10);
+
+                // 5XX XXX XX XX formatla
+                const p1 = digits.slice(0, 3);
+                const p2 = digits.slice(3, 6);
+                const p3 = digits.slice(6, 8);
+                const p4 = digits.slice(8, 10);
+
+                let out = p1;
+                if (p2) out += " " + p2;
+                if (p3) out += " " + p3;
+                if (p4) out += " " + p4;
+
+                return out;
+            }
+
+            input.addEventListener("input", function () {
+                const caret = input.selectionStart;
+                const before = input.value;
+                input.value = formatTRMobile(input.value);
+
+                // caret düzeltmesi (basit yaklaşım)
+                if (caret !== null) {
+                    const diff = input.value.length - before.length;
+                    input.setSelectionRange(caret + diff, caret + diff);
+                }
+            });
+
+            input.addEventListener("blur", function () {
+                input.value = formatTRMobile(input.value);
+            });
+        })();
+    </script>
+}

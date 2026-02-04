@@ -1,0 +1,75 @@
+﻿@model RestaurantWeb.Models.ViewModels.PersonelCreateVm
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+<h2>Yeni Personel</h2>
+
+<form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="AdSoyad" class="form-label">Ad Soyad</label>
+        <input asp-for="AdSoyad" class="form-control" />
+        <span asp-validation-for="AdSoyad" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="KullaniciAdi" class="form-label">Kullanıcı Adı</label>
+        <input asp-for="KullaniciAdi" class="form-control" />
+        <span asp-validation-for="KullaniciAdi" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Sifre" class="form-label">Şifre</label>
+        <input asp-for="Sifre" class="form-control" type="password" />
+        <span asp-validation-for="Sifre" class="text-danger"></span>
+        <div class="form-text">Şifre veritabanında hash + salt olarak saklanır.</div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Roller</label>
+
+        <input asp-for="RolMask" type="hidden" /> 
+
+        <div class="d-flex flex-wrap gap-3">
+            @foreach (var r in (IEnumerable<dynamic>)ViewBag.RoleOptions)
+            {
+                var id = $"rol_{r.Value}";
+                <div class="form-check">
+                    <input class="form-check-input role-cb"
+                           type="checkbox"
+                           id="@id"
+                           value="@r.Value"
+                           @(r.Checked ? "checked" : "") />
+                    <label class="form-check-label" for="@id">@r.Text</label>
+                </div>
+            }
+        </div>
+
+        <div class="form-text">Bir personel birden fazla role sahip olabilir (örn. Garson + Kasa).</div>
+    </div>
+
+
+    <button type="submit" class="btn btn-primary">Kaydet</button>
+    <a asp-action="Index" class="btn btn-secondary">İptal</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const hidden = document.querySelector('input[name="RolMask"]');
+            const cbs = document.querySelectorAll('.role-cb');
+
+            function recalc() {
+                let mask = 0;
+                cbs.forEach(cb => { if (cb.checked) mask |= parseInt(cb.value, 10); });
+                hidden.value = mask;
+            }
+
+            cbs.forEach(cb => cb.addEventListener('change', recalc));
+            recalc();
+        })();
+    </script>
+}

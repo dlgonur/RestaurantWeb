@@ -1,0 +1,104 @@
+﻿@using RestaurantWeb.Models
+@using System.Collections.Generic
+
+@{
+    var masaId = (int)ViewBag.MasaId;
+    var masaNo = (int)ViewBag.MasaNo;
+    var siparisId = (int)ViewBag.SiparisId;
+
+    var savedItems = (List<SiparisDetayDto>)(ViewBag.SavedItems ?? new List<SiparisDetayDto>()); // *
+}
+
+<h2>Sipariş - Masa @masaNo</h2>
+
+@Html.AntiForgeryToken()
+
+<div class="alert alert-secondary">
+    Açık Sipariş Id: <strong id="siparisId">@siparisId</strong>
+</div>
+
+<div class="row g-3">
+    <!-- SOL: Ürünler -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <span>Ürünler</span>
+                    <div class="d-flex gap-2">
+                        <select id="kategoriSelect" class="form-select form-select-sm" style="max-width:200px">
+                            <option value="">Tümü</option>
+                        </select>
+                        <input type="text" id="productSearch"
+                               class="form-control form-control-sm"
+                               placeholder="Ürün ara..."
+                               style="max-width:220px" />
+                        <button class="btn btn-sm btn-outline-secondary" id="btnRefresh">Yenile</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="products" class="list-group">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SAĞ: Adisyon + Sepet -->
+    <div class="col-md-5">
+
+        <!-- Adisyon (Kaydedilmiş) -->
+        <div class="card mb-3">
+            <div class="card-header bg-success text-white">Adisyon (Kaydedilmiş)</div>
+            <div class="card-body" id="savedOrderContainer">
+                @await Html.PartialAsync("_OrderTablePartial",
+                (RestaurantWeb.Models.ViewModels.SiparisAdisyonVm)(ViewBag.Adisyon ?? new RestaurantWeb.Models.ViewModels.SiparisAdisyonVm()))
+            </div>
+            <div class="mt-2">
+                <label class="form-label mb-1">Ödeme Yöntemi</label>
+                <select id="paymentMethod" class="form-select form-select-sm">
+                    <option value="0">Nakit</option>
+                    <option value="1">Kredi Kartı</option>
+                    <option value="2">Online</option>
+                </select>
+            </div>
+
+            <button id="btnClose" class="btn btn-success w-100 mt-2">Ödeme Al / Siparişi Kapat</button>
+
+        </div>
+
+
+        <!-- Sepet (Pending) -->
+        <div class="card">
+            <div class="card-header">Sepet</div>
+            <div class="card-body">
+                <div id="cart" class="list-group mb-3">
+                    <div class="text-muted">Sepet boş.</div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <span>Ara Toplam</span>
+                    <strong id="subtotal">0</strong>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <label class="form-label">İskonto (%)</label>
+                    <input id="discount" class="form-control form-control-sm" type="number" min="0" max="100" step="0.01" placeholder="0-100" />
+                </div>
+
+                <div class="d-flex justify-content-between mt-2">
+                    <span>Toplam</span>
+                    <strong id="total">0</strong>
+                </div>
+
+                <button class="btn btn-success w-100 mt-3" id="btnSubmit">Kaydet</button>
+                <div class="text-muted mt-2" id="status"></div>
+            </div>
+        </div>
+
+    </div>
+
+    
+
+</div>
+
+<script src="@Url.Content("~/js/siparis-take.js")"></script>

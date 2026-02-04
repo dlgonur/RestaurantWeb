@@ -1,0 +1,23 @@
+﻿@model RestaurantWeb.Models.Urun
+
+<h2>Ürün Sil</h2>
+
+<div class="alert alert-warning">
+    <div><strong>Ürün:</strong> @Model.Ad</div>
+    <div><strong>Kategori:</strong> @Model.KategoriAd</div>
+    <div><strong>Fiyat:</strong> @Model.Fiyat.ToString("0.00")</div>
+    <div><strong>Durum:</strong> @(Model.AktifMi ? "Aktif" : "Pasif")</div>
+    <div><strong>Oluşturma Tarihi:</strong> @Model.OlusturmaTarihi.ToString("yyyy-MM-dd HH:mm")</div>
+</div>
+
+<div class="alert alert-danger">
+    Bu ürünü silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+</div>
+
+<form asp-action="Delete" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.Id" />
+
+    <button type="submit" class="btn btn-danger">Evet, Sil</button>
+    <a asp-action="Index" class="btn btn-secondary">Vazgeç</a>
+</form>

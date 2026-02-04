@@ -1,0 +1,65 @@
+﻿@model RestaurantWeb.Models.ViewModels.SiparisListVm
+@using System.Linq
+
+<h2>Sipariş Geçmişi</h2>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-sm-3">
+        <label class="form-label">Başlangıç</label>
+        <input type="date" name="baslangic" class="form-control" value="@Model.Baslangic.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-sm-3">
+        <label class="form-label">Bitiş</label>
+        <input type="date" name="bitis" class="form-control" value="@Model.Bitis.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-sm-2">
+        <label class="form-label">Masa No (ops.)</label>
+        <input type="number" name="masaNo" class="form-control" value="@(Model.MasaNo?.ToString() ?? "")" />
+    </div>
+    <div class="col-sm-2 d-grid">
+        <button class="btn btn-primary">Uygula</button>
+    </div>
+</form>
+
+@if (Model.Items == null || !Model.Items.Any())
+{
+    <div class="alert alert-info">Seçilen aralıkta sipariş bulunamadı.</div>
+}
+else
+{
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Masa</th>
+                <th>Durum</th>
+                <th>Açılış</th>
+                <th>Kapanış</th>
+                <th class="text-end">Toplam</th>
+                <th>Ödeme</th>
+                <th class="text-end">Ödeme Tutar</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var x in Model.Items)
+            {
+                <tr>
+                    <td>@x.SiparisId</td>
+                    <td>@x.MasaNo</td>
+                    <td>
+                        <span class="badge @(x.Durum == "Kapalı" ? "bg-success" : "bg-warning text-dark")">@x.Durum</span>
+                    </td>
+                    <td>@x.AcildiTarihi.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@(x.KapandiTarihi?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                    <td class="text-end">@x.Toplam.ToString("N2") ₺</td>
+                    <td>@(string.IsNullOrWhiteSpace(x.OdemeYontemi) ? "-" : x.OdemeYontemi)</td>
+                    <td class="text-end">@x.OdemeTutar.ToString("N2") ₺</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Detay" asp-route-id="@x.SiparisId">Detay</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

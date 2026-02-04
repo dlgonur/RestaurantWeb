@@ -1,0 +1,114 @@
+﻿@model List<RestaurantWeb.Models.Personel>
+@using System.Linq
+
+<h2>Personeller</h2>
+
+@{
+    var aktif = (string)(ViewBag.Aktif ?? "all");
+    var qAd = (string)(ViewBag.QAd ?? "");
+    var qUser = (string)(ViewBag.QUser ?? "");
+}
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-12 col-md-3">
+        <label class="form-label">Aktiflik</label>
+        <select id="aktifSelect" name="aktif" class="form-select">
+            <option value="all">Hepsi</option>
+            <option value="1">Sadece Aktif</option>
+            <option value="0">Sadece Pasif</option>
+        </select>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+              const val = "@aktif";
+              const sel = document.getElementById("aktifSelect");
+              if (sel) sel.value = val || "all";
+            });
+        </script>
+
+
+
+    </div>
+
+    <div class="col-12 col-md-4">
+        <label class="form-label">İsme göre ara</label>
+        <input name="qAd" class="form-control" value="@qAd" placeholder="Ad Soyad..." />
+    </div>
+
+    <div class="col-12 col-md-4">
+        <label class="form-label">Kullanıcı adına göre ara</label>
+        <input name="qUser" class="form-control" value="@qUser" placeholder="kullanici_adi..." />
+    </div>
+
+    <div class="col-12 col-md-1 d-grid">
+        <button class="btn btn-primary" type="submit">Ara</button>
+    </div>
+
+    <div class="col-12">
+        <a class="btn btn-outline-secondary btn-sm"
+           asp-action="Index"
+           asp-route-aktif="all"
+           asp-route-qAd=""
+           asp-route-qUser="">
+            Filtreleri Temizle
+        </a>
+    </div>
+</form>
+
+
+<p>
+    <a class="btn btn-success" asp-action="Create">Yeni Personel</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Ad Soyad</th>
+            <th>Kullanıcı Adı</th>
+            <th>Rol</th>
+            <th>Aktif</th>
+            <th>Oluşturma Tarihi</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model == null || !Model.Any())
+        {
+            <tr>
+                <td colspan="7" class="text-center text-muted">
+                    Henüz personel kaydı bulunmuyor.
+                </td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var p in Model)
+            {
+                <tr>
+                    <td>@p.Id</td>
+                    <td>@p.AdSoyad</td>
+                    <td>@p.KullaniciAdi</td>
+                    <td>@p.Rol</td>
+                    <td>@(p.AktifMi ? "Evet" : "Hayır")</td>
+                    <td>@p.OlusturmaTarihi.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-warning">Düzenle</a>
+
+                        <form asp-action="ToggleAktif" method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@p.Id" />
+                            <button type="submit" class="btn btn-sm @(p.AktifMi ? "btn-secondary" : "btn-success")">
+                                @(p.AktifMi ? "Pasif Yap" : "Aktif Yap")
+                            </button>
+                        </form>
+
+                        <a asp-action="SetPassword" asp-route-id="@p.Id" class="btn btn-sm btn-danger">Şifre Değiştir</a>
+
+                    </td>
+
+                </tr>
+            }
+        }
+    </tbody>
+</table>
