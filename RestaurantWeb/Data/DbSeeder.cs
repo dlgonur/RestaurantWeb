@@ -1,5 +1,5 @@
 ﻿using Npgsql;
-using RestaurantWeb.Helpers;  (PasswordHasher, PasswordGenerator)
+using RestaurantWeb.Helpers;  
 
 namespace RestaurantWeb.Data
 {
