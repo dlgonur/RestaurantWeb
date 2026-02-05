@@ -1,46 +1,90 @@
-# \# RestaurantWeb (ASP.NET Core MVC + PostgreSQL)
+# Restaurant Management System
 
-# 
+**ASP.NET Core MVC + PostgreSQL**
 
-# Restaurant management system built with ASP.NET Core MVC and PostgreSQL (Npgsql).
+This project is a full-stack **Restaurant Management System** developed as part of an internship project.  
+It is designed to model real-world restaurant operations including orders, tables, kitchen workflow, payments, reservations, reporting, and administrative management.
 
-# 
+## 🧱 Technology Stack
 
-# \## Tech Stack
+- **Backend:** ASP.NET Core MVC
+- **Target Framework:** .NET 10
+- **Database:** PostgreSQL
+- **Data Access:** Npgsql (ADO.NET, repository pattern)
+- **Frontend:** Razor Views, Bootstrap, Vanilla JS
+- **Charts & Reports:** Chart.js, ClosedXML (Excel export)
+- **Authentication:** Cookie-based auth
+- **Security:** PBKDF2 password hashing with per-user salt
 
-# \- .NET 10 (TargetFramework: net10.0)
+## 🏗️ Architecture Overview
 
-# \- ASP.NET Core MVC
+The project follows a clear separation of responsibilities:
+Controllers → Services → Repositories → Database
 
-# \- PostgreSQL
+**Key architectural decisions:**
+**Repository Pattern**
+All database access is isolated in repository classes using raw SQL via Npgsql.
 
-# \- Npgsql
+**Service Layer**
+Business rules, validation, and orchestration live in services.
 
-# \- Razor Views + Bootstrap + Vanilla JS (Fetch/AJAX)
+**ViewModels & DTOs**
+Strong separation between domain models and UI/data-transfer models.
 
-# \- ClosedXML (Excel export)
+**OperationResult Pattern**
+Standardized success/failure handling without throwing control-flow exceptions.
 
-# 
+**Idempotent Seeding**
+Database seed operations can safely run multiple times.
 
-# \## Prerequisites
+## 🔐 Authentication & Authorization
 
-# \- .NET 10 SDK
+- Cookie-based authentication
+- Role-based authorization using a bit-flag enum:
+- Passwords are never stored in plain text
 
-# \- PostgreSQL (and pgAdmin optional)
+## 🗄️ Database Setup
 
-# 
+Two setup options are provided.
 
-# \## Quick Start (Clean Setup)
+**Option A — Clean Setup**
 
-# 
+- 1. Create an empty PostgreSQL database:
+     CREATE DATABASE restaurant;
 
-# \### 1) Clone
+- 2. Run the schema script:
+     psql -U postgres -d restaurant -f database/schema.sql
 
-# ```bash
+- 3. Configure the application:
+     Copy RestaurantWeb/appsettings.example.json
+     Rename it to appsettings.json
+     Update the PostgreSQL connection string
 
-# git clone https://github.com/dlgonur/RestaurantWeb.git
+- 4. Run the application:
+     dotnet run
 
-# cd RestaurantWeb
+- On first startup:
+  Tables are seeded idempotently
+  Default tables are created
+  A default admin user is automatically seeded if none exists
 
-# 
+**Option B — Demo Database**
 
+A demo database backup with sample data is provided.
+Restore using:
+pg_restore -U postgres -d restaurant -c database/demo.backup
+This option allows reviewers to immediately explore the system with realistic data.
+
+## 📄 Documentation
+
+A detailed project document is available under:
+docs/Restoran Yönetim Sistemi.pdf
+This document explains:
+
+- System design
+- Data model
+- Business rules
+- Screens and workflows
+
+**Author: Onur**
+**Context: Internship Project**
