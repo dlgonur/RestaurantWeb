@@ -40,7 +40,7 @@ Database seed operations can safely run multiple times.
 ## 🔐 Authentication & Authorization
 
 - Cookie-based authentication
-- Role-based authorization using a bit-flag enum:
+- Role-based authorization using a bit-flag enum
 - Passwords are never stored in plain text
 
 ## 🚀 Step-by-step Setup (Windows)
@@ -121,7 +121,7 @@ In the project folder:
 Wait until you see something like:
 
 - Now listening on: http://localhost:5280
-  Open your browser and go to:
+- Open your browser and go to:
   http://localhost:5280
 
 ### 6) First login (AUTO admin seed)
