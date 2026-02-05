@@ -43,38 +43,114 @@ Database seed operations can safely run multiple times.
 - Role-based authorization using a bit-flag enum:
 - Passwords are never stored in plain text
 
-## 🗄️ Database Setup
+## 🚀 Step-by-step Setup (Windows)
 
-Two setup options are provided.
+### 0) Requirements (install once)
 
-**Option A — Clean Setup**
+You need:
 
-- 1. Create an empty PostgreSQL database:
-     CREATE DATABASE restaurant;
+1. **.NET 10 SDK**
+   - Check:
+     ```bash
+     dotnet --version
+     ```
+     If this command fails, install .NET 10 SDK.
 
-- 2. Run the schema script:
-     psql -U postgres -d restaurant -f database/schema.sql
+2. **PostgreSQL 18**
+   - Install PostgreSQL 18 and remember your **postgres** password.
 
-- 3. Configure the application:
-     Copy RestaurantWeb/appsettings.example.json
-     Rename it to appsettings.json
-     Update the PostgreSQL connection string
+3. **pgAdmin 4** (usually installed with PostgreSQL)
+   - We will use pgAdmin to run SQL scripts.
 
-- 4. Run the application:
-     dotnet run
+### 1) Clone the repository
 
-- On first startup:
-  Tables are seeded idempotently
-  Default tables are created
-  If no user exists, a default admin user is created at startup.
-  The generated password is written to the application logs.
+Open a terminal in the folder where you want the project:
 
-**Option B — Demo Database**
+```bash
+git clone https://github.com/dlgonur/RestaurantWeb.git
+cd RestaurantWeb
+```
 
-A demo database backup with sample data is provided.
-Restore using:
-pg_restore -h localhost -p 5432 -U postgres -d restaurant -c database/demo.backup
-This option allows reviewers to immediately explore the system with realistic data.
+If you already downloaded the zip, just extract it and cd into that folder.
+
+### 2) Create a PostgreSQL database
+
+Open pgAdmin 4:
+
+- 1. Connect to your server (PostgreSQL 18).
+- 2. Right-click Databases → Create → Database
+- 3. Database name:
+     restaurant
+- 4. Owner:
+     postgres
+- 5. Click Save
+- ✅ You now have an empty database.
+
+### 3) Run the database schema (create tables)
+
+Still in pgAdmin:
+
+- 1. Click the database restaurant (select it)
+- 2. Go to Tools → Query Tool
+- 3. Open the file:
+     database/schema.sql
+- 4. Press Run (▶)
+- ✅ If everything is OK you should see “Query returned successfully”.
+
+### 4) Configure appsettings.json (connection string)
+
+In the project folder:
+
+- 1. Go to:
+     RestaurantWeb/appsettings.example.json
+- 2. Copy it and create:
+     RestaurantWeb/appsettings.json
+- 3. Open RestaurantWeb/appsettings.json and edit the connection string:
+     "PostgreSqlConnection": "Host=localhost;Port=5432;Database=restaurant;Username=postgres;Password=YOUR_PASSWORD"
+     Replace YOUR_PASSWORD with your PostgreSQL password.
+- ✅ Save the file.
+
+### 5) Run the application
+
+- In the repo root, run:
+
+```bash
+  dotnet run --project RestaurantWeb
+```
+
+Wait until you see something like:
+
+- Now listening on: http://localhost:5280
+  Open your browser and go to:
+  http://localhost:5280
+
+### 6) First login (AUTO admin seed)
+
+- On the first startup, if there is no user in the database:
+- A default admin user is created automatically.
+- The password is printed to the application logs (terminal output).
+- You will see a log line like:
+
+- [SeedAdmin] Created admin user. Username=admin Password=XXXXXX
+
+- ✅ After login, you can create additional users from the UI (as admin).
+
+### 7) 🧪 Optional: Use demo database (sample data)
+
+If you want a ready-to-explore database with sample data:
+
+- 1. Create an empty database named restaurant (same as above).
+- 2. Restore demo backup using:
+
+```bash
+     pg_restore -h localhost -p 5432 -U postgres -d restaurant -c database/demo.backup
+```
+
+- 3. Then run the app normally:
+
+```bash
+     dotnet run --project RestaurantWeb
+```
 
 ## 📄 Documentation
 
