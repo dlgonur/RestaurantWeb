@@ -8,8 +8,8 @@ It is designed to model real-world restaurant operations including orders, table
 ## 🧱 Technology Stack
 
 - **Backend:** ASP.NET Core MVC
-- **Target Framework:** .NET 10
-- **Database:** PostgreSQL
+- **Target Framework:** .NET 10 SDK
+- **Database:** PostgreSQL 18
 - **Data Access:** Npgsql (ADO.NET, repository pattern)
 - **Frontend:** Razor Views, Bootstrap, Vanilla JS
 - **Charts & Reports:** Chart.js, ClosedXML (Excel export)
@@ -66,13 +66,14 @@ Two setup options are provided.
 - On first startup:
   Tables are seeded idempotently
   Default tables are created
-  A default admin user is automatically seeded if none exists
+  If no user exists, a default admin user is created at startup.
+  The generated password is written to the application logs.
 
 **Option B — Demo Database**
 
 A demo database backup with sample data is provided.
 Restore using:
-pg_restore -U postgres -d restaurant -c database/demo.backup
+pg_restore -h localhost -p 5432 -U postgres -d restaurant -c database/demo.backup
 This option allows reviewers to immediately explore the system with realistic data.
 
 ## 📄 Documentation
