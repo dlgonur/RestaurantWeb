@@ -1,22 +1,26 @@
-﻿using System.Security.Cryptography;
+﻿// PBKDF2 tabanlı parola hashleme ve doğrulama yardımcı sınıfı.
+// Salt + yüksek iterasyon + sabit süreli karşılaştırma kullanır.
+
+using System.Security.Cryptography;
 using System.Text;
 
 namespace RestaurantWeb.Helpers
 {
     public static class PasswordHasher
     {
-        // Sabitler: Standart güvenlik değerleri
+        // Standart güvenlik değerleri
         private const int SaltSize = 16;      // 128-bit
         private const int KeySize = 32;       // 256-bit
-        private const int Iterations = 100_000; // Deneme sayısı (Yüksek olması iyidir)
+        private const int Iterations = 100_000; // Brute-force maliyetini artırır
         private static readonly HashAlgorithmName _hashAlgorithm = HashAlgorithmName.SHA256;
 
+        // Yeni parola için hash + salt üretir
         public static (string HashBase64, string SaltBase64) CreateHash(string password)
         {
-            // 1. Rastgele Salt oluştur
+            // Rastgele salt üret
             var salt = RandomNumberGenerator.GetBytes(SaltSize);
 
-            // 2. Hash'i oluştur (.NET 8 ile gelen modern yöntem)
+            // PBKDF2 ile hash oluştur
             var hash = Rfc2898DeriveBytes.Pbkdf2(
                 Encoding.UTF8.GetBytes(password),
                 salt,
@@ -25,17 +29,18 @@ namespace RestaurantWeb.Helpers
                 KeySize
             );
 
-            // 3. Veritabanına kaydedilecek string formatına çevir
+            // DB saklaması için Base64 formatı
             return (Convert.ToBase64String(hash), Convert.ToBase64String(salt));
         }
 
+        // Girilen parolayı, kayıtlı hash ile doğrular
         public static bool Verify(string password, string hashBase64, string saltBase64)
         {
-            // 1. Veritabanından gelen stringleri byte dizisine çevir
+            // DB’den gelen değerleri byte dizisine çevir
             var salt = Convert.FromBase64String(saltBase64);
             var expectedHash = Convert.FromBase64String(hashBase64);
 
-            // 2. Kullanıcının girdiği şifreyi, aynı salt ile tekrar hashle
+            // Aynı parametrelerle tekrar hashle
             var actualHash = Rfc2898DeriveBytes.Pbkdf2(
                 Encoding.UTF8.GetBytes(password),
                 salt,
@@ -44,8 +49,7 @@ namespace RestaurantWeb.Helpers
                 KeySize
             );
 
-            // 3. İki hash'i güvenli bir şekilde karşılaştır
-            // (FixedTimeEquals: Saldırganın işlem süresinden şifreyi tahmin etmesini engeller)
+            // Sabit süreli karşılaştırma (timing attack önleme)
             return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
         }
     }

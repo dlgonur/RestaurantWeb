@@ -1,4 +1,10 @@
-﻿
+﻿// Personel yönetimi (Admin):
+// - Listeleme + filtreleme (aktiflik/ad/username)
+// - Personel oluşturma / güncelleme
+// - Aktif/pasif toggle (kendi hesabını pasif etmeyi engeller)
+// - Şifre sıfırlama
+// Not: Audit amaçlı actor bilgileri (personelId/username/ip) service’e iletilir.
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantWeb.Models;
@@ -38,6 +44,7 @@ namespace RestaurantWeb.Controllers
             return HttpContext.Connection.RemoteIpAddress?.ToString();
         }
 
+        // Listeleme: aktiflik ve metin filtreleri ile personelleri getirir
         public IActionResult Index(string? aktif, string? qAd, string? qUser)
         {
             // aktif: "all" | "1" | "0"
@@ -75,6 +82,7 @@ namespace RestaurantWeb.Controllers
             return View(new PersonelCreateVm { RolMask = 0 }); 
         }
 
+        // Personel oluşturma: rol mask + şifre set + audit (actor/ip)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Create(PersonelCreateVm model)
@@ -135,6 +143,7 @@ namespace RestaurantWeb.Controllers
 
         }
 
+        // Güncelleme: temel alanlar + rol mask, audit ile
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Edit(int id, PersonelEditVm model)
@@ -160,7 +169,7 @@ namespace RestaurantWeb.Controllers
     actorPersonelId: CurrentPersonelId(),
     actorUsername: CurrentUsername(),
     ip: ClientIp()
-); // ★
+); 
 
 
             if (!updateResult.Success)
@@ -177,15 +186,16 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // Aktif/pasif: admin kendi hesabını pasif edemez
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult ToggleAktif(int id)
         {
-            var actorId = CurrentPersonelId(); // ★
-            if (actorId.HasValue && actorId.Value == id) // ★
+            var actorId = CurrentPersonelId(); 
+            if (actorId.HasValue && actorId.Value == id) 
             {
-                TempData["Error"] = "Kendi hesabınızı pasif edemezsiniz."; // ★
-                return RedirectToAction(nameof(Index)); // ★
+                TempData["Error"] = "Kendi hesabınızı pasif edemezsiniz."; 
+                return RedirectToAction(nameof(Index)); 
             }
 
                 var result = _service.ToggleAktif(id, CurrentPersonelId(), CurrentUsername(), ClientIp()); 
@@ -213,6 +223,7 @@ namespace RestaurantWeb.Controllers
             return View(vm);
         }
 
+        // Şifre yenileme: service tarafı PBKDF2+salt üretir, loglar
         [HttpPost] 
         [ValidateAntiForgeryToken] 
         public IActionResult SetPassword(PersonelSetPasswordVm vm) 
@@ -230,7 +241,7 @@ namespace RestaurantWeb.Controllers
     actorPersonelId: CurrentPersonelId(),
     actorUsername: CurrentUsername(),
     ip: ClientIp()
-); // ★
+); 
 
 
             if (!result.Success)
@@ -243,6 +254,7 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // UI: PersonelRol enum’undan checkbox listesi üretir (bitmask)
         private void FillRolCheckboxes(int selectedMask) 
         {
             // None’ı listelemiyoruz

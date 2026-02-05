@@ -1,4 +1,7 @@
-﻿using Npgsql;
+﻿// Ürün tablosu için ham DB erişimi (Npgsql).
+// CRUD + kategori join + resim saklama/okuma ve resim update stratejisi bu repo’da tutulur.
+
+using Npgsql;
 using RestaurantWeb.Models;
 using NpgsqlTypes;
 
@@ -15,6 +18,7 @@ namespace RestaurantWeb.Data
                       ?? throw new InvalidOperationException("Connection string not found.");
         }
 
+        // Ürünleri kategori adıyla birlikte listeler (resim bytes çekmez)
         public OperationResult<List<Urun>> GetAllWithKategori()
         {
             try
@@ -42,6 +46,7 @@ namespace RestaurantWeb.Data
                 using var cmd = new NpgsqlCommand(sql, conn);
                 using var reader = cmd.ExecuteReader();
 
+                // DB -> entity mapping (liste ekranı için gereken alanlar)
                 while (reader.Read())
                 {
                     list.Add(new Urun
@@ -73,6 +78,7 @@ namespace RestaurantWeb.Data
 
         }
 
+        // Tek ürün + kategori + (varsa) resim meta/bytes getirir (edit/delete ekranları)
         public OperationResult<Urun> GetByIdWithKategori(int id)
         {
             if (id <= 0)
@@ -127,6 +133,7 @@ namespace RestaurantWeb.Data
             }
         }
 
+        // Yeni ürün ekler (kategori FK, ad unique olabilir, resim opsiyonel)
         public OperationResult Add(int kategoriId, string ad, decimal fiyat, int stok, byte[]? resim, string? resimMime, string? resimAdi)
         {
 
@@ -159,13 +166,13 @@ namespace RestaurantWeb.Data
                 cmd.Parameters.AddWithValue("@kategori_id", kategoriId);
                 cmd.Parameters.AddWithValue("@ad", ad);
                 cmd.Parameters.Add("@fiyat", NpgsqlDbType.Numeric).Value = fiyat;
-                cmd.Parameters.AddWithValue("@stok", stok); // ★
-                cmd.Parameters.AddWithValue("@resim", (object?)resim ?? DBNull.Value); // ★
-                cmd.Parameters.AddWithValue("@resim_mime", (object?)resimMime ?? DBNull.Value); // ★
-                cmd.Parameters.AddWithValue("@resim_adi", (object?)resimAdi ?? DBNull.Value); // ★
+                cmd.Parameters.AddWithValue("@stok", stok); 
+                cmd.Parameters.AddWithValue("@resim", (object?)resim ?? DBNull.Value); 
+                cmd.Parameters.AddWithValue("@resim_mime", (object?)resimMime ?? DBNull.Value); 
+                cmd.Parameters.AddWithValue("@resim_adi", (object?)resimAdi ?? DBNull.Value); 
 
-                if (stok < 0) // ★
-                    return OperationResult.Fail("Stok 0'dan küçük olamaz."); // ★
+                if (stok < 0) 
+                    return OperationResult.Fail("Stok 0'dan küçük olamaz."); 
 
                 var affected = cmd.ExecuteNonQuery();
                 if (affected == 1) 
@@ -193,7 +200,8 @@ namespace RestaurantWeb.Data
 
         }
 
-        public OperationResult Update(int id, int kategoriId, string ad, decimal fiyat, int stok, byte[]? resim, string? resimMime, string? resimAdi, bool resimGuncellensin) // ★
+        // Ürün günceller; resim alanları sadece istenirse update edilir
+        public OperationResult Update(int id, int kategoriId, string ad, decimal fiyat, int stok, byte[]? resim, string? resimMime, string? resimAdi, bool resimGuncellensin) 
         {
             if (id <= 0)
                 return OperationResult.Fail("Geçersiz ürün id.");
@@ -217,6 +225,7 @@ namespace RestaurantWeb.Data
                 using var conn = new NpgsqlConnection(_connStr);
                 conn.Open();
 
+                // Resim güncellenmeyecekse DB’deki mevcut resme dokunulmaz
                 const string sqlWithImage = @"
 UPDATE urunler
 SET kategori_id = @kategori_id,
@@ -238,7 +247,7 @@ SET kategori_id = @kategori_id,
 WHERE id = @id;
 ";
 
-                var sql = resimGuncellensin ? sqlWithImage : sqlNoImage; // ★
+                var sql = resimGuncellensin ? sqlWithImage : sqlNoImage; 
                 using var cmd = new NpgsqlCommand(sql, conn);
 
                 cmd.Parameters.AddWithValue("@id", id);
@@ -247,7 +256,7 @@ WHERE id = @id;
                 cmd.Parameters.Add("@fiyat", NpgsqlDbType.Numeric).Value = fiyat;
                 cmd.Parameters.AddWithValue("@stok", stok);
 
-                if (resimGuncellensin) // ★
+                if (resimGuncellensin) 
                 {
                     cmd.Parameters.AddWithValue("@resim", (object?)resim ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@resim_mime", (object?)resimMime ?? DBNull.Value);
@@ -278,6 +287,7 @@ WHERE id = @id;
             }
         }
 
+        // Ürün siler
         public OperationResult Delete(int id)
         {
             if (id <= 0) 
@@ -357,7 +367,7 @@ WHERE id = @id;
             }
         }
 
-        // ★
+        // Ürün resmini bytes + mime olarak döner (img src endpoint’i için)
         public OperationResult<(byte[] Bytes, string Mime)> GetResimByUrunId(int id)
         {
             if (id <= 0)

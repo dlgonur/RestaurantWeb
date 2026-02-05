@@ -1,4 +1,7 @@
-﻿using Npgsql;
+﻿// Kategori tablosu için ham DB erişimi (Npgsql).
+// CRUD + ürün bağımlılığı kontrolleri burada; iş kuralı/mesaj seçimi üst katmanda yapılır.
+
+using Npgsql;
 using RestaurantWeb.Models;
 
 namespace RestaurantWeb.Data
@@ -13,6 +16,7 @@ namespace RestaurantWeb.Data
                       ?? throw new InvalidOperationException("Connection string not found.");
         }
 
+        // Tüm kategorileri listeler (id sıralı)
         public OperationResult<List<Kategori>> GetAll()
         {
             try
@@ -31,6 +35,7 @@ namespace RestaurantWeb.Data
                 using var cmd = new NpgsqlCommand(sql, conn);
                 using var reader = cmd.ExecuteReader();
 
+                // DB -> entity mapping
                 while (reader.Read())
                 {
                     list.Add(new Kategori
@@ -64,6 +69,7 @@ namespace RestaurantWeb.Data
             }
         }
 
+        // Id ile tek kategori getirir
         public OperationResult<Kategori> GetById(int id)
         {
             if (id <= 0)
@@ -107,6 +113,7 @@ namespace RestaurantWeb.Data
             }
         }
 
+        // Yeni kategori ekler (ad unique)
         public OperationResult Add(string ad)
         {
 
@@ -148,6 +155,7 @@ namespace RestaurantWeb.Data
 
         }
 
+        // Kategori adını günceller
         public OperationResult Update(int id, string ad)
         {
             if (id <= 0)
@@ -193,6 +201,7 @@ namespace RestaurantWeb.Data
             }
         }
 
+        // Kategori siler (FK varsa engellenir)
         public OperationResult Delete(int id)
         {
             if (id <= 0) 
@@ -202,6 +211,7 @@ namespace RestaurantWeb.Data
                 using var conn = new NpgsqlConnection(_connStr);
                 conn.Open();
 
+                // RETURNING ile silinen kaydın adını alıp UI mesajında kullanırız
                 const string sql =
                     @"
                     DELETE FROM kategoriler 
@@ -222,6 +232,7 @@ namespace RestaurantWeb.Data
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation ||
                     ex.SqlState == PostgresErrorCodes.RestrictViolation)
             {
+                // Ürün bağlıysa FK sebebiyle silinemez
                 return OperationResult.Fail("Bu kategoriye bağlı ürünler bulunmaktadır. Önce ürünleri silmeniz gerekir.");
             }
             catch (PostgresException ex)
@@ -235,6 +246,7 @@ namespace RestaurantWeb.Data
 
         }
 
+        // Kategoriye bağlı ürün var mı kontrol eder
         public OperationResult<bool> HasProducts(int kategoriId)
         {
             if (kategoriId <= 0)
@@ -267,6 +279,7 @@ namespace RestaurantWeb.Data
             }
         }
 
+        // Silme ekranı önizlemesi için: kategoriye bağlı ürünleri limitli getirir
         public OperationResult<List<Urun>> GetProductsByKategoriId(int kategoriId, int limit = 20)
         {
             if (kategoriId <= 0)

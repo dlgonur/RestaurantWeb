@@ -1,4 +1,8 @@
-﻿using Npgsql;
+﻿// Rezervasyonlar tablosu için ham DB erişimi (Npgsql).
+// Listeleme/filtreleme + çakışma kontrolü + iptal/kullanıldı durum geçişleri içerir.
+// Bazı metotlar transaction dışarıdan yönetilsin diye (conn, tx) parametreli tasarlanmıştır.
+
+using Npgsql;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
 using NpgsqlTypes;
@@ -15,8 +19,11 @@ namespace RestaurantWeb.Data
                       ?? throw new InvalidOperationException("Connection string not found.");
         }
 
+        // Rezervasyon otomasyonunda kullanılan minimal bilgi paketi (DB'den gereksiz kolon taşımamak için)
         public record RezInfo(int RezervasyonId, int MasaId, string MusteriAd, DateTime RezTarih);
 
+        // "Şu an" itibarıyla aktif (durum=0) ve grace penceresinde kalan rezervasyonları getirir.
+        // Amaç: MasaService tarafında zamanı gelen rezervasyonları otomatik işleme almak.
         public List<RezInfo> GetDueActiveReservations(DateTime now, int graceMinutes) 
         {
             using var conn = new NpgsqlConnection(_connStr);
@@ -54,6 +61,8 @@ ORDER BY r.rezervasyon_tarihi ASC;
             return list;
         }
 
+        // Verilen masa id'leri için +/- window aralığında en yakın aktif rezervasyonu map olarak döndürür.
+        // DISTINCT ON ile her masa için tek kayıt seçilir (Board ekranında hızlı lookup için).
         public Dictionary<int, RezInfo> GetActiveReservationsForTablesInWindow(
                     int[] masaIds, DateTime now, int windowMinutes)
         {
@@ -62,7 +71,6 @@ ORDER BY r.rezervasyon_tarihi ASC;
             using var conn = new NpgsqlConnection(_connStr);
             conn.Open();
 
-            // make_interval yerine doğrudan parametre ile gelen interval'i kullanıyoruz
             const string sql = @"
 SELECT DISTINCT ON (r.masa_id)
     r.id,
@@ -80,7 +88,6 @@ ORDER BY r.masa_id, r.rezervasyon_tarihi ASC;";
             cmd.Parameters.AddWithValue("@ids", masaIds);
             cmd.Parameters.AddWithValue("@now", now);
 
-            // TimeSpan olarak gönderiyoruz (En güvenli yöntem)
             cmd.Parameters.Add("@interval", NpgsqlDbType.Interval).Value = TimeSpan.FromMinutes(windowMinutes);
 
             var map = new Dictionary<int, RezInfo>();
@@ -97,6 +104,8 @@ ORDER BY r.masa_id, r.rezervasyon_tarihi ASC;";
             return map;
         }
 
+        // Transaction dışarıdan yönetilir; aktif rezervasyonu "kullanıldı" durumuna çeker.
+        // Not: durum guard'ı var (sadece aktif -> kullanıldı).
         public OperationResult MarkUsed(NpgsqlConnection conn, NpgsqlTransaction tx, int rezervasyonId) 
         {
             if (rezervasyonId <= 0) return OperationResult.Fail("Geçersiz rezervasyon."); 
@@ -158,6 +167,7 @@ VALUES (@masa_id, @ad, @tel, @tarih, @kisi, @not, 0);
             }
         }
 
+        // Transaction'lı create: id döndürür (rezervasyon + masa/sipariş akışları birlikte yönetilecekse).
         public OperationResult<int> Create(NpgsqlConnection conn, NpgsqlTransaction tx, RezervasyonCreateVm model) 
         {
             if (model.MasaId <= 0) return OperationResult<int>.Fail("Geçersiz masa.");
@@ -196,6 +206,8 @@ RETURNING id;
             }
         }
 
+        // +/- window aralığında aynı masa için aktif rezervasyon var mı? (zaman pencereli çakışma)
+        // Bu kontrol, "ortalama oturma süresi" gibi senaryolarda aynı masayı bloklamak için kullanılır.
         public OperationResult<bool> HasWindowConflict(NpgsqlConnection conn, NpgsqlTransaction tx,
                     int masaId, DateTime tarih, int windowMinutes)
         {
@@ -255,6 +267,7 @@ SELECT EXISTS (
             return OperationResult<bool>.Ok(exists);
         }
 
+        // Aktif rezervasyonu iptal eder (sadece durum=0 iken).
         public OperationResult Cancel(int rezervasyonId) 
         {
             if (rezervasyonId <= 0) return OperationResult.Fail("Geçersiz rezervasyon.");

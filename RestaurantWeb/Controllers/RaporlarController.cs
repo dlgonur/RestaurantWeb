@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantWeb.Services;
 
@@ -14,6 +15,7 @@ namespace RestaurantWeb.Controllers
             _service = service; 
         }
 
+        // Tarih aralığı + rapor modu (kasa/close vs) parametrelerini service’e iletir, ViewModel döndürür.
         public IActionResult Dashboard(DateTime? baslangic, DateTime? bitis, string? mode)
         {
             var res = _service.GetDashboard(baslangic, bitis, mode); 
@@ -26,6 +28,7 @@ namespace RestaurantWeb.Controllers
             return View(res.Data); 
         }
 
+        // Aynı filtrelerle raporu Excel’e export eder; dosya üretimi tamamen service katmanındadır.
         [HttpGet]
         public IActionResult ExportExcel(DateTime? baslangic, DateTime? bitis, string? mode)
         {

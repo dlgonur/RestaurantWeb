@@ -1,4 +1,7 @@
-﻿using Npgsql;
+﻿// Kimlik doğrulama ve rol bazlı yönlendirme kurallarını içerir.
+// Şifre doğrulama, aktiflik kontrolü ve landing kararları bu servistedir.
+
+using Npgsql;
 using RestaurantWeb.Data;
 using RestaurantWeb.Helpers;
 using RestaurantWeb.Models;
@@ -8,6 +11,7 @@ namespace RestaurantWeb.Services
 {
     public class AuthService : IAuthService
     {
+        // DB bağlantı fabrikası
         private readonly INpgsqlConnectionFactory _cf;
 
         public AuthService(INpgsqlConnectionFactory cf)
@@ -15,6 +19,7 @@ namespace RestaurantWeb.Services
             _cf = cf;
         }
 
+        // Kullanıcı adı / şifre doğrulaması yapar
         public OperationResult<AuthUserDto> ValidateCredentials(string kullaniciAdi, string sifrePlain)
         {
             kullaniciAdi = (kullaniciAdi ?? "").Trim();
@@ -43,6 +48,7 @@ LIMIT 1;
                 if (!r.Read())
                     return OperationResult<AuthUserDto>.Fail("Kullanıcı adı veya şifre hatalı.");
 
+                // DB -> DTO dönüşümü
                 var dto = new AuthUserDto
                 {
                     Id = r.GetInt32(0),
@@ -72,6 +78,7 @@ LIMIT 1;
             }
         }
 
+        // Rol setine göre varsayılan controller belirler
         public string GetLandingController(PersonelRol roles)
         {
             if (roles.HasFlag(PersonelRol.Mutfak)) return "Mutfak";
@@ -81,6 +88,7 @@ LIMIT 1;
             return "Home";
         }
 
+        // Rol setine göre varsayılan action belirler
         public string GetLandingAction(PersonelRol roles)
         {
             if (roles.HasFlag(PersonelRol.Mutfak)) return "Index";

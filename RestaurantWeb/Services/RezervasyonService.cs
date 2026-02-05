@@ -1,4 +1,7 @@
-﻿using Npgsql;
+﻿// Rezervasyon iş kuralları katmanı.
+// Amaç: Controller'dan DB detaylarını ayırmak; transaction/lock, çakışma ve masa durumu kurallarını tek yerde toplamak.
+
+using Npgsql;
 using RestaurantWeb.Data;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
@@ -18,14 +21,16 @@ namespace RestaurantWeb.Services
             _cfg = cfg;
         }
 
+        // Rezervasyon oluşturur.
         public OperationResult Create(RezervasyonCreateVm model) 
         {
             if (model.MasaId <= 0) return OperationResult.Fail("Geçersiz masa."); 
             if (string.IsNullOrWhiteSpace(model.MusteriAd)) return OperationResult.Fail("Müşteri adı zorunlu."); 
             if (model.RezervasyonTarihi == default) return OperationResult.Fail("Rezervasyon tarihi zorunlu.");
 
-            model.RezervasyonTarihi = DateTime.SpecifyKind(model.RezervasyonTarihi, DateTimeKind.Unspecified); 
+            model.RezervasyonTarihi = DateTime.SpecifyKind(model.RezervasyonTarihi, DateTimeKind.Unspecified);
 
+            // Rezervasyon blok penceresi (örn. 2 saat): aynı masa için yakın rezervasyonları engeller
             var blockHours = _cfg.GetValue<int?>("Reservation:BlockHoursDefault") ?? 2; 
             if (blockHours < 0) blockHours = 0; 
             if (blockHours > 24) blockHours = 24; 
@@ -38,12 +43,12 @@ namespace RestaurantWeb.Services
             conn.Open();
             using var tx = conn.BeginTransaction();
 
-            // 1) Masa lock + aktif mi? 
+            // 1) Masa satırını kilitle (FOR UPDATE) + aktiflik kontrolü
             var masaDurum = _masaRepo.GetDurumAndLock(conn, tx, model.MasaId); 
             if (masaDurum == null) { tx.Rollback(); return OperationResult.Fail("Masa bulunamadı."); } 
-            if (!masaDurum.AktifMi) { tx.Rollback(); return OperationResult.Fail("Bu masa pasif. Rezervasyon alınamaz."); } 
+            if (!masaDurum.AktifMi) { tx.Rollback(); return OperationResult.Fail("Bu masa pasif. Rezervasyon alınamaz."); }
 
-            // 2) Masa doluysa ve rezervasyon “çok yakınsa” (senin kuralın) 
+            // 2) İş kuralı: Masa şu an doluysa ve rezervasyon zamanı "çok yakın" ise rezervasyon alma
 
             if (windowMinutes > 0)
             {
@@ -58,13 +63,13 @@ namespace RestaurantWeb.Services
                 }
             }
 
-            // 3) Çakışma kontrolü: window overlap 
+            // 3) Çakışma kontrolü: aynı masa için +/- window aralığında aktif rezervasyon var mı?
             var conf = _rezRepo.HasWindowConflict(conn, tx, model.MasaId, model.RezervasyonTarihi, windowMinutes); 
             if (!conf.Success) { tx.Rollback(); return OperationResult.Fail(conf.Message); } 
             if (conf.Data) { tx.Rollback(); return OperationResult.Fail("Lütfen başka bir tarih seçin. Bu masa için seçtiğiniz zamana yakın bir rezervasyon bulunuyor."); } 
 
             // 4) Insert 
-            var createRes = _rezRepo.Create(conn, tx, model); // RETURNING id olan overload
+            var createRes = _rezRepo.Create(conn, tx, model); 
             if (!createRes.Success) { tx.Rollback(); return OperationResult.Fail(createRes.Message); } 
 
             tx.Commit();
@@ -73,6 +78,7 @@ namespace RestaurantWeb.Services
 
         public OperationResult Cancel(int rezervasyonId) => _rezRepo.Cancel(rezervasyonId);
 
+        // Rezervasyon listeleme: filtre/doğrulama service'te, sorgu repository'de
         public OperationResult<List<RezervasyonListItemVm>> GetList(DateTime? baslangic, DateTime? bitis, int? masaNo, short? durum, string? q, int limit) 
         {
             try
@@ -101,6 +107,7 @@ namespace RestaurantWeb.Services
             }
         }
 
+        // Rezervasyonu "kullanıldı" yapar (transaction içinde).
         public OperationResult MarkUsed(int rezervasyonId) 
         {
             try

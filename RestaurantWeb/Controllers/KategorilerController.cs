@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Kategori yönetimi (CRUD + aktif/pasif) controller’ı.
+// İş kuralları servis katmanında; controller akışı yönetir ve TempData ile UI mesajı verir.
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
@@ -11,17 +14,16 @@ namespace RestaurantWeb.Controllers
     [Authorize(Roles = "Admin")]
     public class KategorilerController : Controller
     {
-        private readonly IKategoriService _service; // ★
+        private readonly IKategoriService _service; 
         private readonly ILogger<KategorilerController> _logger;
 
-        public KategorilerController(IKategoriService service, ILogger<KategorilerController> logger) // ★
+        public KategorilerController(IKategoriService service, ILogger<KategorilerController> logger) 
         {
-            _service = service; // ★
+            _service = service; 
             _logger = logger;
         }
 
-
-
+        // Listeleme
         public IActionResult Index()
         {
             var result = _service.GetAll();
@@ -116,46 +118,46 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction("Index");
         }
 
-
+        // Silme önizleme ekranı (bağlı ürünleri gösterir)
         [HttpGet]
         public IActionResult Delete(int id)
         {
-            var vmRes = _service.GetDeleteVm(id, previewLimit: 20); // ★
-            if (!vmRes.Success || vmRes.Data == null) // ★
+            var vmRes = _service.GetDeleteVm(id, previewLimit: 20); 
+            if (!vmRes.Success || vmRes.Data == null) 
             {
                 TempData["Error"] = vmRes.Message;
                 return RedirectToAction("Index");
             }
 
-            return View(vmRes.Data); // ★
+            return View(vmRes.Data); 
         }
 
+        // Silme (PRG) - ürün varsa silme engellenir ve Delete ekranında kalınır
         [HttpPost]
         [ValidateAntiForgeryToken]
         [ActionName("Delete")]
         public IActionResult DeleteConfirmed(int id)
         {
-            var delRes = _service.DeleteIfNoProducts(id); // ★
+            var delRes = _service.DeleteIfNoProducts(id); 
 
-            if (!delRes.Success) // ★ ürün varsa veya başka hata varsa
+            if (!delRes.Success)  
             {
-                // Kullanıcıyı Index'e fırlatma; Delete ekranında kal // ★
-                ModelState.AddModelError("", delRes.Message); // ★
+                // Kullanıcıyı Index'e fırlatma; Delete ekranında kal 
+                ModelState.AddModelError("", delRes.Message); 
 
-                var vmRes = _service.GetDeleteVm(id, previewLimit: 20); // ★
+                var vmRes = _service.GetDeleteVm(id, previewLimit: 20); 
                 if (!vmRes.Success || vmRes.Data == null)
                 {
                     TempData["Error"] = vmRes.Message;
                     return RedirectToAction("Index");
                 }
 
-                return View("Delete", vmRes.Data); // ★
+                return View("Delete", vmRes.Data); 
             }
 
             TempData["Success"] = delRes.Message;
             return RedirectToAction("Index");
         }
-
 
 
         [HttpPost]

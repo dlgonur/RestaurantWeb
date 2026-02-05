@@ -1,4 +1,8 @@
-﻿using ClosedXML.Excel;
+﻿// RaporService: Dashboard raporunun “iş katmanı”.
+// - mode (payment/close) ve tarih aralığını normalize eder (defaultlar + swap).
+// - Rapor verisini RaporRepository’den alır ve ViewModel’i (DashboardVm) UI’ye hazırlar.
+
+using ClosedXML.Excel;
 using RestaurantWeb.Data;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.Dtos;
@@ -15,6 +19,7 @@ namespace RestaurantWeb.Services
             _repo = repo;
         }
 
+        // Dashboard ekranı için: tarih + mod normalize edilir, repository’den rapor çekilir
         public OperationResult<DashboardVm> GetDashboard(DateTime? baslangic, DateTime? bitis, string? mode) 
         {
             var m = NormalizeMode(mode); 
@@ -27,6 +32,7 @@ namespace RestaurantWeb.Services
             return OperationResult<DashboardVm>.Ok(res.Data); 
         }
 
+        // Dashboard verisini Excel’e export eder (ClosedXML)
         public OperationResult<ReportExcelDto> ExportDashboardExcel(DateTime? baslangic, DateTime? bitis, string? mode) 
         {
             var dashRes = GetDashboard(baslangic, bitis, mode); 
@@ -180,6 +186,7 @@ namespace RestaurantWeb.Services
             }
         }
 
+        // Mode normalize: UI dışından gelse bile sadece payment/close kabul
         private static string NormalizeMode(string? mode) 
         {
             var m = (mode ?? "payment").ToLowerInvariant();
@@ -187,6 +194,7 @@ namespace RestaurantWeb.Services
             return m;
         }
 
+        // Tarih ters girilirse swap
         private static void NormalizeDates(DateTime? baslangic, DateTime? bitis, out DateTime b, out DateTime t) 
         {
             b = (baslangic?.Date ?? DateTime.Today);

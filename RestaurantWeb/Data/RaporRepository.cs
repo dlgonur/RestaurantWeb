@@ -1,4 +1,7 @@
-﻿using Npgsql;
+﻿// Dashboard raporları için ham DB erişimi (Npgsql).
+// Tek endpoint altında: genel özet, ödeme dağılımı, günlük trend, kategori ciro, top ürünler, personel performansı.
+
+using Npgsql;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
 
@@ -14,6 +17,7 @@ namespace RestaurantWeb.Data
                       ?? throw new InvalidOperationException("Connection string not found.");
         }
 
+        // Verilen tarih aralığı için dashboard verilerini döndürür.
         public OperationResult<DashboardVm> GetDashboard(DateTime baslangic, DateTime bitis, string mode) 
         {
             var start = baslangic.Date;

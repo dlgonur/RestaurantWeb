@@ -88,7 +88,6 @@ namespace RestaurantWeb.Data
             tx.Commit(); 
 
             // Şifreyi bir kere göstermek için (lokalde kurulum kolaylaşsın)
-            // İstersen bunu ILogger'a bağlarız; şimdilik Console yeterli. 
             Console.WriteLine($"[SeedAdmin] Created admin user. Username={username} Password={password}"); 
 
             return (username, password, true); 

@@ -1,4 +1,9 @@
-﻿using Npgsql;
+﻿// Sipariş geçmişi (liste) ve sipariş detayı (header + kalemler + ödeme) sorgularını yapan repository.
+// Amaç: UI tarafında “Sipariş Geçmişi” ekranını hızlı listelemek ve Detay ekranında tek siparişin tüm özetini göstermek.
+// Not: Bu sınıf sadece okuma yapar; siparişin lifecycle/transaction işlemleri SiparisRepository’dedir.
+
+
+using Npgsql;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
 
@@ -18,6 +23,7 @@ namespace RestaurantWeb.Data
         {
             try
             {
+                // Tarih filtresi: bitiş günü dahil olsun diye [start, end+1) aralığı kullanıyoruz.
                 var start = baslangic.Date;
                 var endExclusive = bitis.Date.AddDays(1);
 
@@ -49,7 +55,7 @@ LEFT JOIN LATERAL (
 WHERE s.olusturma_tarihi >= @start
   AND s.olusturma_tarihi <  @end
 ";
-
+                // İsteğe bağlı masa filtresi (arama ekranı)
                 if (masaNo.HasValue)
                     sql += " AND m.masa_no = @masaNo\n";
 
@@ -66,9 +72,11 @@ WHERE s.olusturma_tarihi >= @start
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
+                    // Durum DB’de numeric/short tutuluyor → UI’da okunabilir string’e çeviriyoruz.
                     var durumShort = r.GetInt16(8);
                     string durumText = durumShort == 0 ? "Açık" : "Kapalı";
 
+                    // Ödeme yoksa yontem null olabilir.
                     string yontemText = "";
                     if (!r.IsDBNull(9))
                         yontemText = ((OdemeYontemi)r.GetInt16(9)).ToString();
@@ -101,6 +109,7 @@ WHERE s.olusturma_tarihi >= @start
             }
         }
 
+        // 1) Header: siparişin özet bilgileri (masa + tutarlar + durum)
         public OperationResult<SiparisDetayVm> GetOrderDetail(int siparisId)
         {
             if (siparisId <= 0)
@@ -121,7 +130,7 @@ SELECT
     s.kapandi_tarihi,
     s.durum,
     s.ara_toplam,
-    s.iskonto,
+    s.iskonto_oran,
     s.iskonto_tutar,
     s.toplam
 FROM siparisler s
@@ -152,7 +161,7 @@ WHERE s.id = @id;
                     };
                 }
 
-                // 2) Items
+                // 2) Items: sipariş kalemleri (ürün adı + adet + birim fiyat + satır toplam)
                 const string itemsSql = @"
 SELECT
     sk.urun_id,
@@ -182,7 +191,7 @@ ORDER BY u.ad;
                     }
                 }
 
-                // 3) Payment (latest)
+                // 3) Payment: varsa en son alınan ödeme bilgisini göster (detay ekranı için yeterli)
                 const string paySql = @"
 SELECT tutar, yontem, alindi_tarihi
 FROM odemeler

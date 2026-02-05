@@ -1,17 +1,20 @@
-﻿using System.Security.Cryptography; // ★
+﻿// Kriptografik olarak güvenli, okunabilir (ambiguous olmayan) rastgele parola üretir.
+
+using System.Security.Cryptography; 
 
 namespace RestaurantWeb.Helpers
 {
     public static class PasswordGenerator
     {
-        // ★ URL-safe, kopyalaması kolay, sadece [A-Za-z0-9]
-        private const string Alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"; // ★ (0,O,1,l yok)
+        // 0/O, 1/I/l gibi karışan karakterler özellikle çıkarıldı
+        private const string Alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"; 
 
-        public static string Generate(int length = 12) // ★
+        public static string Generate(int length = 12) 
         {
-            if (length < 8) length = 8; // ★
+            // Minimum uzunluk: zayıf parola üretimini engelle
+            if (length < 8) length = 8; 
 
-            var bytes = RandomNumberGenerator.GetBytes(length); // ★
+            var bytes = RandomNumberGenerator.GetBytes(length); 
             var chars = new char[length];
 
             for (int i = 0; i < length; i++)

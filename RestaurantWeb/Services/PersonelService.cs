@@ -1,6 +1,11 @@
-﻿using RestaurantWeb.Data;
+﻿// Personel iş kuralları + audit log orkestrasyonu:
+// - Rol mask doğrulama (Flags) + normalize
+// - CRUD çağrılarını repo’ya delege eder
+// - CREATE/UPDATE/TOGGLE_ACTIVE/SET_PASSWORD aksiyonlarını personel_loglari tablosuna yazar
+// Not: Log yazımı TryLog ile “best-effort”; log hatası ana akışı bozmaz.
+
+using RestaurantWeb.Data;
 using RestaurantWeb.Models;
-using Npgsql; 
 
 namespace RestaurantWeb.Services
 {
@@ -20,6 +25,7 @@ namespace RestaurantWeb.Services
             _logger = logger; 
         }
 
+        // Audit log yazımı: başarısız olursa sadece warning basar, akışı bozmaz
         private void TryLog(PersonelLog log) 
         {
             try
@@ -29,10 +35,10 @@ namespace RestaurantWeb.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Personel audit log yazılamadı. Aksiyon: {Aksiyon}", log.Aksiyon);
-                // ana akış bozulmasın
             }
         }
 
+        // Log nesnesini tek yerden üretmek için yardımcı
         private void LogAction( 
             string aksiyon,
             int? actorPersonelId,
@@ -62,18 +68,17 @@ namespace RestaurantWeb.Services
             });
         }
 
+        // UI’dan gelen rol mask’ini doğrular (0/None kabul edilmez)
         private static PersonelRol ParseAndValidateRolMask(int rolMask, out string? error) 
         {
             error = null;
 
-            // rolMask 0 ise “None” demek; kabul etmiyoruz
             if (rolMask <= 0)
             {
                 error = "En az bir rol seçiniz.";
                 return PersonelRol.None;
             }
 
-            // rolMask enum’a cast edilir (Flags varsayımı)
             var rol = (PersonelRol)rolMask;
 
             if ((int)rol <= 0)
@@ -92,8 +97,9 @@ namespace RestaurantWeb.Services
             return _repo.GetAllFiltered(aktifMi, qAd, qUser);
         }
 
-        public OperationResult<Personel> GetById(int id) => _repo.GetById(id); 
+        public OperationResult<Personel> GetById(int id) => _repo.GetById(id);
 
+        // Personel oluşturma: repo ekler; ardından CREATE log’u yazar
         public OperationResult<int> Create( 
             string adSoyad,
             string kullaniciAdi,
@@ -131,6 +137,7 @@ namespace RestaurantWeb.Services
             return addRes;
         }
 
+        // Güncelleme: eski state’i log için okur; repo update; UPDATE log’u yazar
         public OperationResult Update( 
             int id,
             string adSoyad,
@@ -166,7 +173,7 @@ namespace RestaurantWeb.Services
                 oldRol: old != null ? (int)old.Rol : null,
                 newRol: (int)rol,
                 oldAktif: old?.AktifMi,
-                newAktif: old?.AktifMi, // aktiflik bu update ile değişmiyor
+                newAktif: old?.AktifMi, 
                 ip: ip,
                 aciklama: "Personel bilgileri güncellendi"
             );
@@ -174,6 +181,7 @@ namespace RestaurantWeb.Services
             return updRes;
         }
 
+        // Aktif/pasif: repo toggle döndürür; önceki state ile TOGGLE_ACTIVE log’u yazar
         public OperationResult<bool> ToggleAktif( 
             int id,
             int? actorPersonelId,
@@ -207,6 +215,7 @@ namespace RestaurantWeb.Services
             return res;
         }
 
+        // Şifre reset: repo PBKDF2+salt ile günceller; SET_PASSWORD log’u yazar
         public OperationResult SetPassword( 
             int id,
             string kullaniciAdi,
@@ -224,7 +233,6 @@ namespace RestaurantWeb.Services
             if (string.IsNullOrWhiteSpace(newPassword))
                 return OperationResult.Fail("Yeni şifre boş olamaz.");
 
-            // hedefi log için çek
             var targetRes = _repo.GetById(id);
             var t = targetRes.Success ? targetRes.Data : null;
 

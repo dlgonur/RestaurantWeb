@@ -1,6 +1,4 @@
-﻿using RestaurantWeb.Models;
-
-namespace RestaurantWeb.Models.ViewModels
+﻿namespace RestaurantWeb.Models.ViewModels
 {
     public class KategoriDeleteVm
     {

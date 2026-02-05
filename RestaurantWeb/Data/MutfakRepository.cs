@@ -1,4 +1,7 @@
-﻿using Npgsql;
+﻿// Mutfak tarafı DB erişimi: “açık sipariş + mutfak kalemleri” listesini üretir
+// ve kalem durum güncellemesini (row-lock + log) transaction içinde yapar.
+
+using Npgsql;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
 
@@ -6,14 +9,10 @@ namespace RestaurantWeb.Data
 {
     public class MutfakRepository
     {
-        private readonly string _connStr;
+        public MutfakRepository(IConfiguration configuration){}
 
-        public MutfakRepository(IConfiguration configuration)
-        {
-            _connStr = configuration.GetConnectionString("PostgreSqlConnection")
-                      ?? throw new InvalidOperationException("Connection string not found.");
-        }
-
+        // Açık siparişlerdeki mutfak kalemlerini (durum 0/1/2) sipariş bazında gruplayıp döner.
+        // Not: Connection dışarıdan gelir (service açar), burada sadece query+map yapılır.
         public OperationResult<List<MutfakSiparisVm>> GetPendingOrders(NpgsqlConnection conn) 
         {
             try
@@ -58,6 +57,7 @@ namespace RestaurantWeb.Data
                         map[siparisId] = s;
                     }
 
+
                     s.Kalemler.Add(new MutfakKalemVm
                     {
                         KalemId = kalemId,
@@ -79,6 +79,9 @@ namespace RestaurantWeb.Data
             }
         }
 
+
+        // Kalem durumunu günceller: önce kalemi ve bağlı siparişi lock’lar (sipariş açık olmalı),
+        // sonra update yapar ve log’a “ITEM_STATUS” kaydı düşer.
         public OperationResult SetItemStatus(NpgsqlConnection conn, NpgsqlTransaction tx,
             int kalemId, short durum, string? actorUsername) 
         {
@@ -96,8 +99,6 @@ WHERE sk.id = @id
 FOR UPDATE;
 ";
 
-
-
                 int siparisId;
                 short oldDurum;
 
@@ -112,9 +113,6 @@ FOR UPDATE;
                     oldDurum = r.GetInt16(1);
                 }
 
-
-
-
                 const string updSql = @"UPDATE siparis_kalemleri SET durum=@d WHERE id=@id;";
                 using (var cmd = new NpgsqlCommand(updSql, conn, tx))
                 {
@@ -123,6 +121,7 @@ FOR UPDATE;
                     cmd.ExecuteNonQuery();
                 }
 
+                // Audit trail: kim, hangi kalemi hangi durumdan hangi duruma çekti?
                 SiparisLogRepository.AddLog(
                     conn, tx,
                     siparisId,
@@ -131,8 +130,6 @@ FOR UPDATE;
                     durum.ToString(),
                     actorUsername
                 );
-
-
 
                 return OperationResult.Ok("Güncellendi.");
             }

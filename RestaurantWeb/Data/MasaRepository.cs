@@ -1,6 +1,9 @@
-﻿using Npgsql;
+﻿// Masa tablosu için ham DB erişimi (Npgsql).
+// CRUD + aktif/pasif toggle ve rezervasyon/sipariş senaryoları için satır kilitleme (FOR UPDATE) içerir.
+
+using Npgsql;
 using RestaurantWeb.Models;
-using System.Collections.Generic;
+
 
 namespace RestaurantWeb.Data
 {
@@ -14,6 +17,7 @@ namespace RestaurantWeb.Data
                       ?? throw new InvalidOperationException("Connection string not found.");
         }
 
+        // Tüm masaları listeler (board + admin CRUD için)
         public OperationResult<List<Masa>> GetAll()
         {
             try
@@ -34,7 +38,7 @@ namespace RestaurantWeb.Data
 
                 while (reader.Read())
                 {
-                    // DB null gelmez diye tasarladık ama yine de korumalı okuyoruz
+                    // DB -> entity mapping
                     list.Add(new Masa
                     {
                         Id = reader.GetInt32(0),
@@ -52,12 +56,10 @@ namespace RestaurantWeb.Data
             }
             catch (PostgresException ex)
             {
-                // Diğer DB hataları
                 return OperationResult<List<Masa>>.Fail($"Veritabanı işlemi sırasında bir hata oluştu. (Kod: {ex.SqlState})");
             }
             catch (Exception)
             {
-                // DB dışı hatalar
                 return OperationResult<List<Masa>>.Fail(
                     "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin."
                 );
@@ -141,7 +143,6 @@ namespace RestaurantWeb.Data
             }
             catch (PostgresException ex) when (ex.SqlState == "23505")
             {
-                // unique violation (masa_no unique)
                 return OperationResult.Fail($"Masa {masaNo} zaten mevcut.");
             }
             catch (PostgresException ex)
@@ -281,9 +282,9 @@ namespace RestaurantWeb.Data
             }
         }
 
+        // Transaction dışarıdan yönetilir; burada sadece satırı kilitleyip durumu döndürürüz
         public MasaDurumDto? GetDurumAndLock(NpgsqlConnection conn, NpgsqlTransaction tx, int masaId)
         {
-            // Transaction dışarıdan geliyor, biz sadece sorguyu çalıştırıyoruz.
             const string sql = @"
         SELECT id, aktif_mi, durum
         FROM masalar
@@ -304,6 +305,8 @@ namespace RestaurantWeb.Data
                 Durum = (MasaDurumu)r.GetInt16(2)
             };
         }
+
+        // Board / rezervasyon otomasyonu için minimal masa durum DTO’su
         public class MasaDurumDto
         {
             public int Id { get; set; }

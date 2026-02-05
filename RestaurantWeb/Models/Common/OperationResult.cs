@@ -1,4 +1,7 @@
-﻿namespace RestaurantWeb.Models
+﻿// Katmanlar arası standart başarı/hata dönüş modeli.
+// Controller–Service–Repository hattında tek tip sonuç taşımak için kullanılır.
+
+namespace RestaurantWeb.Models
 {
     public class OperationResult
     {
@@ -11,13 +14,16 @@
             Message = message;
         }
 
+        // Veri taşımayan başarılı sonuç
         public static OperationResult Ok(string message = "İşlem başarılı.")
             => new(true, message);
 
+        // Genel hata sonucu
         public static OperationResult Fail(string message)
             => new(false, message);
     }
 
+    // Veri taşıyan generic sonuç modeli
     public class OperationResult<T> : OperationResult
     {
         public T? Data { get; } 
@@ -27,9 +33,12 @@
         {
             Data = data;
         }
-                public static OperationResult<T> Ok(T data, string message = "İşlem başarılı.")
+
+        // Veri içeren başarılı sonuç
+        public static OperationResult<T> Ok(T data, string message = "İşlem başarılı.")
             => new(true, message, data);
 
+        // Veri taşımayan hata sonucu (Data default/null)
         public static new OperationResult<T> Fail(string message)
             => new(false, message, default);
     }

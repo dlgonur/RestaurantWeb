@@ -1,20 +1,24 @@
-﻿using Npgsql;
+﻿// Personel işlemlerinin audit kaydını tutar (kim, kimi, ne zaman, ne yaptı?).
+// Not: Bu repo “OperationResult” dönmüyor çünkü log yazma genelde “best-effort” bir yan etkidir.
+
+using Npgsql;
 using RestaurantWeb.Models;
 
 namespace RestaurantWeb.Data
 {
     public class PersonelLogRepository
     {
-        private readonly INpgsqlConnectionFactory _cf; // ★
+        private readonly INpgsqlConnectionFactory _cf; 
 
-        public PersonelLogRepository(INpgsqlConnectionFactory cf) // ★
+        public PersonelLogRepository(INpgsqlConnectionFactory cf) 
         {
-            _cf = cf; // ★
+            _cf = cf; 
         }
 
+        // Personel üzerinde yapılan işlemi (rol/aktiflik değişimi vb.) denetim tablosuna yazar.
         public void Add(PersonelLog log)
         {
-            using var conn = _cf.Create(); // ★
+            using var conn = _cf.Create(); 
             conn.Open();
 
             const string sql = @"
@@ -54,9 +58,11 @@ VALUES
             cmd.ExecuteNonQuery();
         }
 
+        // Filtreli log listesi: tarih aralığı + aksiyon + target kullanıcı adı.
+        // end: inclusive gibi davranması için < (end+1 gün) şeklinde uygulanır.
         public List<PersonelLog> GetList(DateTime? start, DateTime? end, string? aksiyon, string? targetUsername, int limit)
         {
-            using var conn = _cf.Create(); // ★
+            using var conn = _cf.Create(); 
             conn.Open();
 
             var sql = @"
@@ -79,34 +85,34 @@ WHERE 1=1
 ";
 
             if (start.HasValue)
-                sql += " AND created_at >= @start"; // ★
+                sql += " AND created_at >= @start"; 
 
             if (end.HasValue)
-                sql += " AND created_at < @end"; // ★
+                sql += " AND created_at < @end"; 
 
             if (!string.IsNullOrWhiteSpace(aksiyon))
-                sql += " AND aksiyon = @aksiyon"; // ★
+                sql += " AND aksiyon = @aksiyon"; 
 
             if (!string.IsNullOrWhiteSpace(targetUsername))
-                sql += " AND target_kullanici_adi ILIKE @target"; // ★
+                sql += " AND target_kullanici_adi ILIKE @target"; 
 
-            sql += " ORDER BY created_at DESC LIMIT @limit;"; // ★
+            sql += " ORDER BY created_at DESC LIMIT @limit;"; 
 
             using var cmd = new NpgsqlCommand(sql, conn);
 
             if (start.HasValue)
-                cmd.Parameters.AddWithValue("@start", start.Value.Date); // ★
+                cmd.Parameters.AddWithValue("@start", start.Value.Date); 
 
             if (end.HasValue)
-                cmd.Parameters.AddWithValue("@end", end.Value.Date.AddDays(1)); // ★
+                cmd.Parameters.AddWithValue("@end", end.Value.Date.AddDays(1)); 
 
             if (!string.IsNullOrWhiteSpace(aksiyon))
-                cmd.Parameters.AddWithValue("@aksiyon", aksiyon); // ★
+                cmd.Parameters.AddWithValue("@aksiyon", aksiyon); 
 
             if (!string.IsNullOrWhiteSpace(targetUsername))
-                cmd.Parameters.AddWithValue("@target", $"%{targetUsername}%"); // ★
+                cmd.Parameters.AddWithValue("@target", $"%{targetUsername}%"); 
 
-            cmd.Parameters.AddWithValue("@limit", limit); // ★
+            cmd.Parameters.AddWithValue("@limit", limit); 
 
             var list = new List<PersonelLog>();
             using var r = cmd.ExecuteReader();

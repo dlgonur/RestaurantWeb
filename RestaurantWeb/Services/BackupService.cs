@@ -1,4 +1,8 @@
-﻿using RestaurantWeb.Models;
+﻿// PostgreSQL backup/restore süreçleri için servis katmanı.
+// pg_dump çağrısını güvenli şekilde (şifreyi komuta yazmadan) çalıştırır, dosyayı doğrular,
+// listeleme/indirme/silme ve "son N backup" temizliğini yönetir.
+
+using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
@@ -29,6 +33,7 @@ namespace RestaurantWeb.Services
             _keepLast = int.TryParse(_cfg["Backup:KeepLast"], out var k) ? k : 50;
         }
 
+        // pg_dump ile backup oluşturur ve dosya adını döndürür.
         public OperationResult<string> CreateBackup(string? actorUsername)
         {
             if (string.IsNullOrWhiteSpace(_pgDumpPath) || !File.Exists(_pgDumpPath))
@@ -96,6 +101,7 @@ namespace RestaurantWeb.Services
             }
         }
 
+        // Backup klasöründeki dosyaları metadata ile listeler (UI listesi için).
         public OperationResult<List<BackupItemVm>> ListBackups()
         {
             try
@@ -122,6 +128,7 @@ namespace RestaurantWeb.Services
             }
         }
 
+        // Seçilen backup dosyasını indirilebilir byte[] olarak döndürür.
         public OperationResult<(byte[] Bytes, string ContentType, string DownloadName)> GetBackupFile(string fileName)
         {
             if (!IsSafeFileName(fileName))
@@ -146,6 +153,7 @@ namespace RestaurantWeb.Services
             }
         }
 
+        // Backup dosyasını siler
         public OperationResult DeleteBackup(string fileName)
         {
             if (!IsSafeFileName(fileName))
@@ -166,18 +174,15 @@ namespace RestaurantWeb.Services
             }
         }
 
-        // ----------------- helpers -----------------
-
+        // Backup klasörünün mutlak yolunu üretir.
         private string GetFullBackupDir()
         {
-            // ContentRoot = RestaurantWeb proje dizini
             var root = AppContext.BaseDirectory;
-            // BaseDirectory bin/... olabilir; daha deterministik için current dir de kullanılabilir
-            // Bu projede en pratik: Directory.GetCurrentDirectory()
             var projectRoot = Directory.GetCurrentDirectory();
             return Path.GetFullPath(Path.Combine(projectRoot, _backupDir));
         }
 
+        // Kullanıcı adını dosya adına uygun hale getirir (sadece [a-z0-9_-]).
         private static string Sanitize(string s)
         {
             s = s.Trim().ToLowerInvariant();
@@ -186,6 +191,7 @@ namespace RestaurantWeb.Services
             return s.Length > 32 ? s[..32] : s;
         }
 
+        // Güvenli dosya adı kontrolü (path traversal / invalid chars engeli).
         private static bool IsSafeFileName(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName)) return false;
@@ -194,11 +200,13 @@ namespace RestaurantWeb.Services
             return true;
         }
 
+        // Hata durumunda yarım oluşan dosyayı sessizce temizlemeye çalışır.
         private static void TryDelete(string path)
         {
             try { if (File.Exists(path)) File.Delete(path); } catch { }
         }
 
+        // "Son N backup" politikasına göre eski dosyaları temizler.
         private void CleanupOld(string dir)
         {
             if (_keepLast <= 0) return;
@@ -219,27 +227,22 @@ namespace RestaurantWeb.Services
             catch { }
         }
 
+        // pg_dump argümanlarını üretir (format + host/port/user/db + output file).
         private string BuildPgDumpArgs(ConnParts cs, string outPath)
         {
-            // custom: -Fc
-            // plain: default (SQL)
             var fmtArg = _format == "plain" ? "" : "-Fc";
             var fileArg = _format == "plain"
                 ? $"-f \"{outPath}\""
                 : $"-f \"{outPath}\"";
-
-            // not: username/host/port/dbname args
-            // şifre env var ile geliyor
             var args =
                 $"{fmtArg} -h \"{cs.Host}\" -p {cs.Port} -U \"{cs.Username}\" {fileArg} \"{cs.Database}\"";
 
             return args.Trim();
         }
 
+        // Connection string parçalama (basit parser).
         private static ConnParts ParseConn(string connStr)
         {
-            // Basit parser: "Host=...;Port=...;Database=...;Username=...;Password=..."
-            // NpgsqlConnectionStringBuilder da kullanılabilir ama ekstra referans istemiyoruz.
             var dict = connStr.Split(';', StringSplitOptions.RemoveEmptyEntries)
                 .Select(x => x.Split('=', 2))
                 .Where(a => a.Length == 2)
@@ -257,6 +260,7 @@ namespace RestaurantWeb.Services
             };
         }
 
+        // pg_dump için gerekli minimal connection parçaları
         private sealed class ConnParts
         {
             public string Host { get; set; } = "";

@@ -1,4 +1,7 @@
-﻿using Npgsql;
+﻿// Mutfak operasyonlarını yönetir: mutfak kuyruğunu (bekleyen kalemler) getirir,
+// ve kalem durumunu transaction içinde günceller + loglamayı repo üzerinden tetikler.
+// Controller sadece HTTP/Partial döner; servis connection/transaction orkestrasyonudur.
+
 using RestaurantWeb.Data;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
@@ -16,6 +19,7 @@ namespace RestaurantWeb.Services
             _repo = repo;
         }
 
+        // Mutfak kuyruğunu okur (read-only): connection açıp repo'ya delege eder.
         public OperationResult<List<MutfakSiparisVm>> GetPendingOrders()
         {
             try
@@ -23,8 +27,7 @@ namespace RestaurantWeb.Services
                 using var conn = _cf.Create();
                 conn.Open();
 
-                // read-only => tx şart değil ama istersen BeginTransaction(IsolationLevel.ReadCommitted) da olur
-                return _repo.GetPendingOrders(conn); // ★
+                return _repo.GetPendingOrders(conn);
             }
             catch
             {
@@ -32,6 +35,8 @@ namespace RestaurantWeb.Services
             }
         }
 
+        // Kalem durumunu günceller: write operasyonu olduğu için transaction ile atomic çalışır.
+        // Repo burada hem update hem de sipariş log/akışını tek transaction içinde tutar.
         public OperationResult SetItemStatus(int kalemId, short durum, string? actorUsername)
         {
             using var conn = _cf.Create();
@@ -40,7 +45,7 @@ namespace RestaurantWeb.Services
             using var tx = conn.BeginTransaction();
             try
             {
-                var res = _repo.SetItemStatus(conn, tx, kalemId, durum, actorUsername); // ★
+                var res = _repo.SetItemStatus(conn, tx, kalemId, durum, actorUsername); 
                 if (!res.Success)
                 {
                     tx.Rollback();

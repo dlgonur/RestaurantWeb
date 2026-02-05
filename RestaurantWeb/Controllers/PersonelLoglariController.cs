@@ -1,4 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization; 
+﻿// PersonelLoglariController: personel üzerinde yapılan kritik aksiyonların (create/update/aktiflik/şifre)
+// audit amaçlı listelendiği ekranı yönetir.
+// Filtreleme (tarih aralığı, aksiyon, hedef kullanıcı) controller seviyesinde normalize edilir;
+// log verisinin doğrulanması ve güvenlik kontrolleri servis katmanındadır.
+
+
+using Microsoft.AspNetCore.Authorization; 
 using Microsoft.AspNetCore.Mvc; 
 using RestaurantWeb.Models.ViewModels; 
 using RestaurantWeb.Services; 
@@ -18,7 +24,7 @@ namespace RestaurantWeb.Controllers
         [HttpGet]
         public IActionResult Index(DateTime? baslangic, DateTime? bitis, string? aksiyon, string? target)
         {
-
+            // tarih ters gelirse swap (defensive)
             if (baslangic.HasValue && bitis.HasValue && bitis.Value.Date < baslangic.Value.Date)
                 (baslangic, bitis) = (bitis, baslangic);
 

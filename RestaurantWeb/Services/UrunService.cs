@@ -1,4 +1,7 @@
-﻿using RestaurantWeb.Data;
+﻿// Ürün işlemlerinde controller ile repository arasında ince servis katmanı.
+// Input normalize eder (trim) ve repo çağrılarını tek noktadan standartlaştırır.
+
+using RestaurantWeb.Data;
 using RestaurantWeb.Models;
 
 namespace RestaurantWeb.Services
@@ -12,6 +15,7 @@ namespace RestaurantWeb.Services
             _repo = repo;
         }
 
+        // Listeleme ve tekil getirme (kategori bilgisiyle)
         public OperationResult<List<Urun>> GetAllWithKategori() => _repo.GetAllWithKategori(); 
         public OperationResult<Urun> GetByIdWithKategori(int id) => _repo.GetByIdWithKategori(id); 
 
@@ -30,7 +34,9 @@ namespace RestaurantWeb.Services
         }
 
         public OperationResult Delete(int id) => _repo.Delete(id); 
-        public OperationResult<bool> ToggleAktif(int id) => _repo.ToggleAktif(id); 
+        public OperationResult<bool> ToggleAktif(int id) => _repo.ToggleAktif(id);
+
+        // Ürün görselini bytes + mime ile döner (controller File() üretir)
         public OperationResult<(byte[] Bytes, string Mime)> GetResim(int id) => _repo.GetResimByUrunId(id); 
 
 

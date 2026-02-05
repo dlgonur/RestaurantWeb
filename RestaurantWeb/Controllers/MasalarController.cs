@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Masa yönetimi (CRUD + aktif/pasif) ve operasyonel “Board” akışını yönetir.
+// Garson/Kasa/Admin erişebilir; masa açma, rezervasyon oluşturma ve iptal akışları burada.
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
@@ -20,6 +23,7 @@ namespace RestaurantWeb.Controllers
             _logger = logger;
         }
 
+        // Masa CRUD listeleme (admin ağırlıklı ekran)
         public IActionResult Index()
         {
             var result = _service.GetAll(); 
@@ -42,6 +46,7 @@ namespace RestaurantWeb.Controllers
             return View(new MasaCreateVm());
         }
 
+        // Masa ekleme (PRG)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Create(MasaCreateVm model)
@@ -86,6 +91,7 @@ namespace RestaurantWeb.Controllers
             });
         }
 
+        // Masa güncelleme (PRG)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Edit(int id, MasaEditVm model)
@@ -138,6 +144,7 @@ namespace RestaurantWeb.Controllers
             return View(result.Data);
         }
 
+        // Silme (PRG)
         [HttpPost]
         [ValidateAntiForgeryToken]
         [ActionName("Delete")]
@@ -148,6 +155,7 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction("Index");
         }
 
+        // Operasyon ekranı: masaların canlı durumu + doluluk metrikleri
         [HttpGet]
         public IActionResult Board()
         {
@@ -160,7 +168,7 @@ namespace RestaurantWeb.Controllers
                 return View(new List<MasaBoardItemVm>());
             }
 
-            // ViewBag set etmeye devam: View’i kırmıyoruz 
+            // View tarafında gösterilen özet metrikler (UI kırılmasın diye ViewBag)
             ViewBag.AktifMasa = res.Data.AktifMasa;
             ViewBag.DoluMasa = res.Data.DoluMasa;
             ViewBag.BlokeliBosMasa = res.Data.BlokeliBosMasa;
@@ -171,7 +179,7 @@ namespace RestaurantWeb.Controllers
             return View(res.Data.Items); 
         }
 
-
+        // Masayı operasyonel olarak açar: açık sipariş yoksa oluşturur ve sipariş ekranına yönlendirir
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Open(int id)
@@ -189,7 +197,7 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction("Take", "Siparisler", new { masaId = id });
         }
 
-
+        // Rezervasyon ekranı (varsayılan saat: bugün 20:00)
         [HttpGet]
         public IActionResult Reserve(int id)
         {
@@ -210,6 +218,7 @@ namespace RestaurantWeb.Controllers
             return View(vm);
         }
 
+        // Rezervasyon oluşturma (PRG)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Reserve(RezervasyonCreateVm model)
@@ -239,6 +248,7 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction("Board");
         }
 
+        // Rezervasyon iptal (PRG)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult CancelReservation(int rezervasyonId) 

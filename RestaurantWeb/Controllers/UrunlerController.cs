@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Ürün yönetimi (CRUD + aktif/pasif) ve ürün görseli (upload/serve) akışlarını yönetir.
+// İş kuralları servis katmanında; controller form doğrulama, PRG ve UI mesajlarını yönetir.
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using RestaurantWeb.Models;
@@ -21,6 +24,8 @@ namespace RestaurantWeb.Controllers
             _kategoriService = kategoriService; 
             _logger = logger;
         }
+
+        // Ürünleri kategori bilgisiyle listeler
         public IActionResult Index()
         {
             var result = _service.GetAllWithKategori();
@@ -46,7 +51,8 @@ namespace RestaurantWeb.Controllers
             return View(new UrunCreateVm());
         }
 
-		[HttpPost]
+        // Ürün ekleme (PRG)
+        [HttpPost]
 		[ValidateAntiForgeryToken]
 		public IActionResult Create(UrunCreateVm model)
 		{
@@ -57,16 +63,16 @@ namespace RestaurantWeb.Controllers
 				return View(model);
 			}
 
-			// Resim validasyonu + okuma
-			byte[]? resimBytes = null;
+            // --- Resim okuma + temel validasyon ---
+            byte[]? resimBytes = null;
 			string? resimMime = null;
 			string? resimAdi = null;
 
 			if (model.Resim != null && model.Resim.Length > 0) 
 			{
-				const long MaxImageBytes = 5 * 1024 * 1024; // 5 MB 
+				const long MaxImageBytes = 5 * 1024 * 1024; // 5 MB limit
 
-				if (model.Resim.Length > MaxImageBytes) 
+                if (model.Resim.Length > MaxImageBytes) 
 				{
 					TempData["Error"] = "Resim boyutu en fazla 5 MB olabilir.";
 					FillKategoriDropdown(model.KategoriId);
@@ -135,10 +141,12 @@ namespace RestaurantWeb.Controllers
 
         }
 
+        // Ürün güncelleme (PRG)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Edit(int id, UrunEditVm model) 
         {
+            // Route id ile model id tutarlılığı
             if (id != model.Id) 
             {
                 TempData["Error"] = "İstek geçersiz (Id uyuşmazlığı)."; 
@@ -152,7 +160,7 @@ namespace RestaurantWeb.Controllers
                 return View(model);
             }
 
-
+            // Aynı anda hem "kaldır" hem "yeni yükle" olamaz
             if (model.ResmiKaldir && model.Resim != null && model.Resim.Length > 0) 
             {
                 TempData["Error"] = "Lütfen ya yeni resim seçin ya da mevcut resmi kaldırın (ikisi aynı anda olamaz)."; 
@@ -163,8 +171,9 @@ namespace RestaurantWeb.Controllers
             byte[]? resimBytes = null; 
             string? resimMime = null;  
             string? resimAdi = null;   
-            bool resimGuncellensin = false; 
+            bool resimGuncellensin = false;
 
+            // Resim güncelleme kararı: kaldır / yeni yükle / dokunma
             if (model.ResmiKaldir) 
             {
                 resimGuncellensin = true;  
@@ -239,8 +248,9 @@ namespace RestaurantWeb.Controllers
             } 
 
             return View(result.Data); 
-        } 
+        }
 
+        // Silme (PRG)
         [HttpPost]
         [ValidateAntiForgeryToken]
         [ActionName("Delete")] 
@@ -262,7 +272,7 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction("Index"); 
         }
 
-        
+        // Ürün resmini bytes olarak döner (UI <img src="...">)
         [HttpGet]
         public IActionResult Resim(int id)
         {
@@ -270,10 +280,12 @@ namespace RestaurantWeb.Controllers
             if (!result.Success || result.Data.Bytes == null || result.Data.Bytes.Length == 0)
                 return NotFound();
 
+            // Kısa süre cache: aynı sayfada tekrar tekrar istek atılmasını azaltır
             Response.Headers["Cache-Control"] = "public,max-age=600"; // 10 dk
             return File(result.Data.Bytes, result.Data.Mime);
         }
 
+        // Kategori dropdown’ını ViewBag üzerinden view’a hazırlar
         private void FillKategoriDropdown(int? selectedKategoriId = null) 
         {
             var catResult = _kategoriService.GetAll(); 

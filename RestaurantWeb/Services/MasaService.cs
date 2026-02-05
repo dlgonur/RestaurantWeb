@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿// Masa operasyonlarını yönetir: Board ekranı için efektif durum hesapları,
+// rezervasyon bloklama mantığı ve “masa aç -> sipariş hazırla” akışı burada.
+// Repository DB erişimini yapar; servis katmanı iş kuralı + orkestrasyon yapar.
+
 using Npgsql;
 using RestaurantWeb.Data;
 using RestaurantWeb.Models;
@@ -26,25 +29,30 @@ namespace RestaurantWeb.Services
         }
 
 
-
+        // CRUD işlemleri direkt repo üzerinden
         public OperationResult<List<Masa>> GetAll() => _masaRepo.GetAll();
         public OperationResult<Masa> GetById(int id) => _masaRepo.GetById(id);
-
         public OperationResult Add(int masaNo, int kapasite) => _masaRepo.Add(masaNo, kapasite);
         public OperationResult Update(int id, int masaNo, int kapasite) => _masaRepo.Update(id, masaNo, kapasite);
         public OperationResult<bool> ToggleAktif(int id) => _masaRepo.ToggleAktif(id);
         public OperationResult Delete(int id) => _masaRepo.Delete(id);
 
+
+        // Board ekranı için: masaları getirir, rezervasyonlara göre efektif durum ve KPI’ları üretir
         public OperationResult<MasaBoardVm> GetBoard(DateTime now) 
         {
+            // Süresi gelen rezervasyonları otomatik “used” yapıp sipariş açma kuralı
             AutoOpenOrdersFromDueReservations(now);
             var result = _masaRepo.GetAll();
             if (!result.Success)
                 return OperationResult<MasaBoardVm>.Fail(result.Message);
 
+            // Rezervasyon blok penceresi: rezervasyon saatinden X saat önce masa “rezerve” gibi görünür 
+            // X değeri appsettings’ten değiştirilebilir
             var masalar = result.Data ?? new List<Masa>();
             var blockHours = Math.Max(0, _cfg.GetValue<int>("Reservation:BlockHoursDefault"));
 
+            // Masalar için yakın gelecekteki aktif rezervasyonları tek seferde al
             var ids = masalar.Select(x => x.Id).ToArray();
             var windowMinutes = blockHours * 60; 
             var nextMap = _rezRepo.GetActiveReservationsForTablesInWindow(ids, now, windowMinutes); 
@@ -62,6 +70,8 @@ namespace RestaurantWeb.Services
                     if (rez != null)
                     {
                         var blockStart = rez.RezTarih.AddHours(-blockHours);
+
+                        // Bu aralıktaysak masa “blokeli”; boş masayı efektif olarak “rezerve” göster
                         if (now >= blockStart && now < rez.RezTarih)
                         {
                             blokeli = true;
@@ -86,7 +96,7 @@ namespace RestaurantWeb.Services
                 })
                 .ToList();
 
-            // KPI’lar da service tarafında 
+            // KPI hesapları: UI üst bar için özet metrikler
             var aktif = items.Count(x => x.AktifMi);
             var dolu = items.Count(x => x.AktifMi && x.DurumEfektif == MasaDurumu.Dolu);
             var blokeliBos = items.Count(x => x.AktifMi && x.DurumEfektif == MasaDurumu.Rezerve);
@@ -109,6 +119,7 @@ namespace RestaurantWeb.Services
             return OperationResult<MasaBoardVm>.Ok(vm); 
         }
 
+        // Masayı “açma” işlemi: rezervasyon blok kuralını kontrol eder ve açık siparişi garanti eder
         public OperationResult<int> EnsureOpenTable(int masaId, DateTime now) 
         {
             if (masaId <= 0)
@@ -122,10 +133,13 @@ namespace RestaurantWeb.Services
             if (next.TryGetValue(masaId, out var rez))
             {
                 var blockStart = rez.RezTarih.AddMinutes(-windowMinutes);
+
+                // Blok aralığında “walk-in açma” engellenir
                 if (now >= blockStart && now < rez.RezTarih)
                     return OperationResult<int>.Fail($"Bu masa {rez.RezTarih:HH:mm} rezervasyonu için bloke. ({rez.MusteriAd})");
             }
 
+            // Sipariş oluşturma/geri döndürme işlemi transaction içinde yapılır
             try
             {
                 var connStr = _cfg.GetConnectionString("PostgreSqlConnection")
@@ -136,10 +150,11 @@ namespace RestaurantWeb.Services
 
                 using var tx = conn.BeginTransaction();
 
+                // “Açık sipariş yoksa oluştur, varsa id döndür”
                 var res = _siparisRepo.EnsureOpenOrderForTable(conn, tx, masaId);
 
                 if (!res.Success)
-                    return OperationResult<int>.Fail(res.Message); // rollback (tx dispose)
+                    return OperationResult<int>.Fail(res.Message); 
 
                 tx.Commit();
                 return OperationResult<int>.Ok(res.Data, "Sipariş hazır."); 
@@ -155,6 +170,7 @@ namespace RestaurantWeb.Services
             }
         }
 
+        // Süresi gelen rezervasyonları otomatik “used” işaretleyip siparişi hazırlar
         private void AutoOpenOrdersFromDueReservations(DateTime now) 
         {
             var grace = _cfg.GetValue<int?>("Reservation:AutoOpenGraceMinutes") ?? 15; 

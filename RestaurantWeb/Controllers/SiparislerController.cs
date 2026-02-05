@@ -1,6 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Sipariş akışının controller katmanı.
+// - Take: masa bazlı aktif siparişi bulur ve adisyonu ekrana hazırlar
+// - Products/Categories: JS tarafı için katalog verisi döner (JSON)
+// - Submit/UpdateDiscount/Close: AJAX ile gelen işlemleri validate edip service’e iletir
+// - Index/Detay/LogPartial: geçmiş siparişleri ve loglarını görüntüler
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Npgsql;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
 using RestaurantWeb.Services; 
@@ -14,6 +19,7 @@ namespace RestaurantWeb.Controllers
         private readonly ILogger<SiparislerController> _logger;
         private readonly ICatalogService _catalog;
 
+        // AJAX istek body modelleri (JS contract)
         public class SubmitOrderRequest
         {
             public int SiparisId { get; set; }
@@ -48,7 +54,7 @@ namespace RestaurantWeb.Controllers
             _logger = logger;
         }
 
-
+        // Masa için açık sipariş adisyon ekranı (sipariş yoksa Board’a yönlendirir)
         [HttpGet]
         public IActionResult Take(int masaId)
         {
@@ -82,6 +88,7 @@ namespace RestaurantWeb.Controllers
             ViewBag.MasaNo = masaNoRes.Data;
             ViewBag.SiparisId = open.Data.Value;
 
+            // İlk render’da adisyon tablosu (partial refresh bu datayı tekrar çeker)
             var adisyonRes = _service.GetSiparisAdisyon(open.Data.Value); 
             if (!adisyonRes.Success || adisyonRes.Data == null)
             {
@@ -93,7 +100,7 @@ namespace RestaurantWeb.Controllers
             return View();
         }
 
-
+        // Ürün listesini JS’e JSON olarak verir (opsiyonel kategori filtreli)
         [HttpGet]
         public IActionResult Products(int? kategoriId = null)
         {
@@ -101,7 +108,6 @@ namespace RestaurantWeb.Controllers
             if (!res.Success)
                 return StatusCode(500, new { message = res.Message });
 
-            // JS contract korunuyor: { id, ad, fiyat, stok, kategori } 
             var list = (res.Data ?? new()).Select(p => new
             {
                 id = p.Id,
@@ -115,7 +121,7 @@ namespace RestaurantWeb.Controllers
         }
 
 
-
+        // Sepeti siparişe uygular (AJAX). Service tarafında stok/price/total hesapları yapılır.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Submit([FromBody] SubmitOrderRequest req)
@@ -138,6 +144,7 @@ namespace RestaurantWeb.Controllers
             return Ok(new { message = result.Message, siparisId = req.SiparisId });
         }
 
+        // Adisyon tablosunu partial olarak yeniler (AJAX)
         [HttpGet]
         public IActionResult GetOrderTable(int siparisId)
         {
@@ -148,6 +155,7 @@ namespace RestaurantWeb.Controllers
             return PartialView("_OrderTablePartial", res.Data);
         }
 
+        // İskonto oranını günceller (log için actor gönderilir)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult UpdateDiscount([FromBody] UpdateDiscountRequest req)
@@ -160,6 +168,7 @@ namespace RestaurantWeb.Controllers
             return Ok(new { message = res.Message });
         }
 
+        // Siparişi ödeme ile kapatır (AJAX). Ödeme yöntemi enum validasyonu yapılır.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Close([FromBody] CloseOrderRequest req)
@@ -167,9 +176,9 @@ namespace RestaurantWeb.Controllers
             var actor = User?.Identity?.Name;
 
             if (!Enum.IsDefined(typeof(OdemeYontemi), req.Yontem)) 
-                return BadRequest(new { message = "Geçersiz ödeme yöntemi." }); 
+                return BadRequest(new { message = "Geçersiz ödeme yöntemi." });
 
-
+            // Loglama/izlenebilirlik için user id claim’den alınır
             var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (!int.TryParse(userIdStr, out var userId))
                 return Unauthorized(new { message = "Kullanıcı bulunamadı." });
@@ -182,7 +191,7 @@ namespace RestaurantWeb.Controllers
             return Ok(new { message = res.Message });
         }
 
-
+        // Sipariş geçmişi listesi (default: son 7 gün)
         public IActionResult Index(DateTime? baslangic, DateTime? bitis, int? masaNo)
         {
             var start = (baslangic ?? DateTime.Today.AddDays(-6)).Date;
@@ -210,6 +219,7 @@ namespace RestaurantWeb.Controllers
             });
         }
 
+        // Sipariş detay ekranı (adisyon + log/özet)
         [HttpGet]
         public IActionResult Detay(int id)
         {
@@ -223,6 +233,7 @@ namespace RestaurantWeb.Controllers
             return View(res.Data);
         }
 
+        // Kategorileri JS’e JSON olarak verir
         [HttpGet]
         public IActionResult Categories()
         {
@@ -239,6 +250,7 @@ namespace RestaurantWeb.Controllers
             return Json(list);
         }
 
+        // Sipariş işlem geçmişi partial’ı (AJAX)
         [HttpGet]
         public IActionResult LogPartial(int siparisId)
         {

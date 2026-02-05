@@ -6,15 +6,15 @@ namespace RestaurantWeb.Data
 {
     public class SiparisLogRepository
     {
-        private readonly string _connStr; // ⭐
+        private readonly string _connStr;
 
-        public SiparisLogRepository(IConfiguration configuration) // ⭐
+        public SiparisLogRepository(IConfiguration configuration)
         {
             _connStr = configuration.GetConnectionString("PostgreSqlConnection")
                       ?? throw new InvalidOperationException("Connection string not found.");
         }
 
-        // WRITE: transaction içinden çağrılır
+        // Transaction içinden çağrılır, sipariş üzerinde yapılan kritik değişiklikleri kaydeder.
         public static void AddLog(NpgsqlConnection conn, NpgsqlTransaction tx,
             int siparisId, string action, string? oldValue, string? newValue, string? actorUsername)
         {
@@ -33,8 +33,9 @@ namespace RestaurantWeb.Data
             cmd.ExecuteNonQuery();
         }
 
-        // READ: UI için
-        public OperationResult<List<SiparisLogItemVm>> GetLogs(int siparisId) // ⭐
+
+        // Detay ekranında göstermek üzere ilgili siparişin loglarını(en yeni -> en eski) çeker.
+        public OperationResult<List<SiparisLogItemVm>> GetLogs(int siparisId)
         {
             if (siparisId <= 0)
                 return OperationResult<List<SiparisLogItemVm>>.Fail("Geçersiz sipariş id.");

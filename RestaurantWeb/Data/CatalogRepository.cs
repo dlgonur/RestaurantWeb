@@ -14,7 +14,7 @@ namespace RestaurantWeb.Data
                       ?? throw new InvalidOperationException("Connection string not found.");
         }
 
-        public OperationResult<List<CatalogCategoryDto>> GetActiveCategories() // ★
+        public OperationResult<List<CatalogCategoryDto>> GetActiveCategories() 
         {
             try
             {
@@ -40,21 +40,21 @@ ORDER BY ad;";
                     });
                 }
 
-                return OperationResult<List<CatalogCategoryDto>>.Ok(list); // ★
+                return OperationResult<List<CatalogCategoryDto>>.Ok(list); 
             }
             catch (PostgresException ex)
             {
                 return OperationResult<List<CatalogCategoryDto>>.Fail(
                     $"Veritabanı işlemi sırasında bir hata oluştu. (Kod: {ex.SqlState})"
-                ); // ★
+                ); 
             }
             catch
             {
-                return OperationResult<List<CatalogCategoryDto>>.Fail("Beklenmeyen hata."); // ★
+                return OperationResult<List<CatalogCategoryDto>>.Fail("Beklenmeyen hata."); 
             }
         }
 
-        public OperationResult<List<CatalogProductDto>> GetActiveProducts(int? kategoriId) // ★
+        public OperationResult<List<CatalogProductDto>> GetActiveProducts(int? kategoriId) 
         {
             try
             {
@@ -91,17 +91,17 @@ WHERE u.aktif_mi = TRUE
                     });
                 }
 
-                return OperationResult<List<CatalogProductDto>>.Ok(list); // ★
+                return OperationResult<List<CatalogProductDto>>.Ok(list); 
             }
             catch (PostgresException ex)
             {
                 return OperationResult<List<CatalogProductDto>>.Fail(
                     $"Veritabanı işlemi sırasında bir hata oluştu. (Kod: {ex.SqlState})"
-                ); // ★
+                ); 
             }
             catch
             {
-                return OperationResult<List<CatalogProductDto>>.Fail("Beklenmeyen hata."); // ★
+                return OperationResult<List<CatalogProductDto>>.Fail("Beklenmeyen hata."); 
             }
         }
     }

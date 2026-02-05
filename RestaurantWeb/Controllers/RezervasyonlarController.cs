@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Rezervasyonları listeleme ve durum aksiyonlarını (iptal / kullanıldı işaretleme) yönetir.
+// Listeleme tarafında filtre/limit normalizasyonu yapar; iş kuralları RezervasyonService katmanındadır.
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantWeb.Models.ViewModels;
 using RestaurantWeb.Services;
@@ -78,9 +81,9 @@ namespace RestaurantWeb.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult MarkUsed(int id, string? returnUrl = null) // ★
+        public IActionResult MarkUsed(int id, string? returnUrl = null) 
         {
-            var res = _service.MarkUsed(id); // ★
+            var res = _service.MarkUsed(id); 
             TempData[res.Success ? "Success" : "Error"] = res.Message;
 
             if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))

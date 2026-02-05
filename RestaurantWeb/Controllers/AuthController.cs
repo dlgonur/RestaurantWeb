@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿// Kimlik doğrulama (login/logout) ve yetkisiz erişim akışlarını yönetir.
+// Cookie tabanlı auth, rol bazlı yönlendirme ve returnUrl kontrolü burada yapılır.
+
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +14,7 @@ namespace RestaurantWeb.Controllers
 {
     public class AuthController : Controller
     {
+        // Kimlik doğrulama ve rol bazlı yönlendirme servisi
         private readonly IAuthService _auth; 
 
         public AuthController(IAuthService auth) 
@@ -22,6 +26,7 @@ namespace RestaurantWeb.Controllers
         [AllowAnonymous]
         public IActionResult Login(string? returnUrl = null)
         {
+            // Yetkisiz yönlendirmeler için dönüş adresi saklanır
             ViewBag.ReturnUrl = returnUrl;
             return View(new LoginVm());
         }
@@ -36,6 +41,7 @@ namespace RestaurantWeb.Controllers
             if (!ModelState.IsValid)
                 return View(vm);
 
+            // Kullanıcı adı / şifre kontrolü
             var res = _auth.ValidateCredentials(vm.KullaniciAdi, vm.Sifre); 
             if (!res.Success || res.Data == null) 
             {
@@ -46,13 +52,14 @@ namespace RestaurantWeb.Controllers
             var user = res.Data;
             var roles = user.Rol;
 
-            // Claims
+            // --- Claims oluşturma ---
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.KullaniciAdi),
             };
 
+            // Kullanıcının rol flag’lerinden Claim üretimi
             foreach (PersonelRol r in Enum.GetValues(typeof(PersonelRol)))
             {
                 if (r == PersonelRol.None) continue;
@@ -60,16 +67,23 @@ namespace RestaurantWeb.Controllers
                     claims.Add(new Claim(ClaimTypes.Role, r.ToString()));
             }
 
-            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            // Cookie identity oluşturulur
+            var identity = new ClaimsIdentity(
+                claims, 
+                CookieAuthenticationDefaults.AuthenticationScheme);
+
             var principal = new ClaimsPrincipal(identity);
 
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+            // Kullanıcı sisteme giriş yapar
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme, 
+                principal);
 
-            // 1) returnUrl varsa (ve local ise) her zaman ona dön 
+            // 1) returnUrl varsa ve local ise önceliklidir
             if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)) 
-                return Redirect(returnUrl); 
+                return Redirect(returnUrl);
 
-            // 2) returnUrl yoksa service-based landing 
+            // 2) Aksi halde role göre varsayılan landing sayfası
             var controller = _auth.GetLandingController(roles); 
             var action = _auth.GetLandingAction(roles); 
             return RedirectToAction(action, controller); 
@@ -79,10 +93,12 @@ namespace RestaurantWeb.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
+            // Auth cookie temizlenir
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction("Login");
         }
 
+        // Yetkisiz erişim ekranı
         [HttpGet]
         public IActionResult Denied() => View();
     }

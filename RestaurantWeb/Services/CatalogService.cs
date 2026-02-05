@@ -1,4 +1,6 @@
-﻿using RestaurantWeb.Data;
+﻿// Menü/Katalog verilerini okuma amaçlı servis.
+
+using RestaurantWeb.Data;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.Dtos;
 
@@ -13,10 +15,12 @@ namespace RestaurantWeb.Services
             _repo = repo;
         }
 
-        public OperationResult<List<CatalogCategoryDto>> GetActiveCategories() // ★
+        // Aktif kategorileri döndürür (sipariş ekranı gibi "seçim" UI'ları için).
+        public OperationResult<List<CatalogCategoryDto>> GetActiveCategories() 
             => _repo.GetActiveCategories();
 
-        public OperationResult<List<CatalogProductDto>> GetActiveProducts(int? kategoriId) // ★
+        // Aktif ürünleri döndürür; kategoriId verilirse filtreli gelir.
+        public OperationResult<List<CatalogProductDto>> GetActiveProducts(int? kategoriId) 
             => _repo.GetActiveProducts(kategoriId);
     }
 }

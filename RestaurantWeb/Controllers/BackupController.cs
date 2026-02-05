@@ -1,11 +1,14 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Veritabanı yedekleme (backup) işlemlerini yönetir.
+// Sadece Admin rolüne açıktır; listeleme, oluşturma, indirme ve silme akışlarını içerir.
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantWeb.Models.ViewModels;
 using RestaurantWeb.Services;
 
 namespace RestaurantWeb.Controllers
 {
-    [Authorize(Roles = "Admin")] // * sadece Admin
+    [Authorize(Roles = "Admin")] 
     public class BackupController : Controller
     {
         private readonly IBackupService _service;
@@ -17,6 +20,7 @@ namespace RestaurantWeb.Controllers
             _logger = logger;
         }
 
+        // Mevcut backup listesini gösterir
         [HttpGet]
         public IActionResult Index()
         {
@@ -38,12 +42,14 @@ namespace RestaurantWeb.Controllers
             return View(vm);
         }
 
+        // Yeni backup oluşturur (PRG pattern)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Create() // * PRG
         {
             try
             {
+                // İşlemi yapan kullanıcı adı (audit amaçlı)
                 var actor = User?.Identity?.Name;
                 var res = _service.CreateBackup(actor);
                 TempData[res.Success ? "Success" : "Error"] = res.Message;
@@ -57,6 +63,7 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction("Index");
         }
 
+        // Backup dosyasını indirir
         [HttpGet]
         public IActionResult Download(string fileName)
         {
@@ -70,9 +77,10 @@ namespace RestaurantWeb.Controllers
             return File(res.Data.Bytes, res.Data.ContentType, res.Data.DownloadName);
         }
 
+        // Backup silme işlemi (PRG pattern)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Delete(string fileName) // * PRG
+        public IActionResult Delete(string fileName) 
         {
             var res = _service.DeleteBackup(fileName);
             TempData[res.Success ? "Success" : "Error"] = res.Message;
