@@ -254,23 +254,65 @@ namespace RestaurantWeb.Data
                 using var conn = new NpgsqlConnection(_connStr);
                 conn.Open();
 
-                const string sql = @"
-                    DELETE FROM masalar 
-                    WHERE id = @id
-                    RETURNING masa_no";
-
-                using var cmd = new NpgsqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@id", id);
-
-                
-                var result = cmd.ExecuteScalar();
-                if (result == null)
+                // 1) Masa var mı + masa_no al (mesaj için) // ★
+                const string sqlMasaNo = @"SELECT masa_no FROM masalar WHERE id = @id;";
+                using (var cmdNo = new NpgsqlCommand(sqlMasaNo, conn))
                 {
+                    cmdNo.Parameters.AddWithValue("@id", id);
+                    var masaNoObj = cmdNo.ExecuteScalar();
+                    if (masaNoObj == null)
+                        return OperationResult.Fail("Masa bulunamadı ya da zaten silinmiş.");
+
+                    var masaNo = Convert.ToInt32(masaNoObj);
+
+                    // 2) Bağlı kayıt var mı? (FK restrict yüzünden silinemez) // ★
+                    const string sqlHasRefs = @"
+                SELECT
+                    EXISTS (SELECT 1 FROM siparisler WHERE masa_id = @id) AS has_siparis,
+                    EXISTS (SELECT 1 FROM rezervasyonlar WHERE masa_id = @id) AS has_rez;
+            ";
+
+                    using (var cmdRefs = new NpgsqlCommand(sqlHasRefs, conn))
+                    {
+                        cmdRefs.Parameters.AddWithValue("@id", id);
+
+                        using var r = cmdRefs.ExecuteReader();
+                        r.Read();
+
+                        var hasSiparis = r.GetBoolean(0);
+                        var hasRez = r.GetBoolean(1);
+
+                        if (hasSiparis || hasRez)
+                        {
+                            // Burada “hard delete” yerine pasif yapmayı öneriyoruz // ★
+                            var detay = (hasSiparis, hasRez) switch
+                            {
+                                (true, true) => "sipariş ve rezervasyon kayıtları",
+                                (true, false) => "sipariş kayıtları",
+                                (false, true) => "rezervasyon kayıtları",
+                                _ => "ilişkili kayıtlar"
+                            };
+
+                            return OperationResult.Fail($"Masa {masaNo} silinemez: Bu masaya bağlı {detay} var. (Öneri: Pasif Yap)");
+                        }
+                    }
+
+                    // 3) Bağ yoksa sil // ★
+                    const string sqlDelete = @"DELETE FROM masalar WHERE id = @id;";
+                    using var cmdDel = new NpgsqlCommand(sqlDelete, conn);
+                    cmdDel.Parameters.AddWithValue("@id", id);
+
+                    var affected = cmdDel.ExecuteNonQuery();
+                    if (affected == 1)
+                        return OperationResult.Ok($"Masa {masaNo} silindi.");
+
                     return OperationResult.Fail("Masa bulunamadı ya da zaten silinmiş.");
                 }
-
-                var masaNo = (int)result;
-                return OperationResult.Ok($"Masa {masaNo} silindi.");
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23001" || ex.SqlState == "23503") // ★
+            {
+                // 23001: restrict violation, 23503: foreign key violation
+                return OperationResult.Fail("Masa silinemedi: Bu masaya bağlı kayıtlar var. (Öneri: Pasif Yap)");
             }
             catch (PostgresException ex)
             {

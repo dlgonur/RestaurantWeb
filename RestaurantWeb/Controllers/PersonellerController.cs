@@ -74,7 +74,6 @@ namespace RestaurantWeb.Controllers
             return View(result.Data ?? new List<Personel>());
         }
 
-
         [HttpGet]
         public IActionResult Create()
         {
@@ -104,7 +103,6 @@ namespace RestaurantWeb.Controllers
     ip: ClientIp()
 );
 
-
             if (!addResult.Success)
             {
                 _logger.LogWarning("Personel ekleme başarısız. KullaniciAdi: {KullaniciAdi}. Mesaj: {Message}",
@@ -119,100 +117,94 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // Aktif/pasif: admin kendi hesabını pasif edemez
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ToggleAktif(int id)
+        {
+            bool isAjax = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
+
+            var actorId = CurrentPersonelId();
+            if (actorId.HasValue && actorId.Value == id)
+            {
+                var msg = "Kendi hesabınızı pasif edemezsiniz.";
+
+                if (isAjax)
+                    return BadRequest(msg); // JS tarafında alert(text) ile göster
+
+                TempData["Error"] = msg;
+                return RedirectToAction(nameof(Index));
+            }
+
+            var result = _service.ToggleAktif(id, actorId, CurrentUsername(), ClientIp());
+
+            if (isAjax)
+            {
+                if (!result.Success)
+                    return BadRequest(result.Message);
+
+                // Artık yeni aktif durumu client'a dönüyoruz
+                return Json(new { success = true, message = result.Message, aktifMi = result.Data });
+            }
+
+            TempData[result.Success ? "Success" : "Error"] = result.Message;
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Modal için Edit içeriği (Partial)
         [HttpGet]
-        public IActionResult Edit(int id)
+        public IActionResult EditModal(int id)
         {
             var result = _service.GetById(id);
             if (!result.Success || result.Data == null)
-            {
-                TempData["Error"] = result.Message;
-                return RedirectToAction(nameof(Index));
-            }
+                return BadRequest(result.Message);
 
             var vm = new PersonelEditVm
             {
                 Id = result.Data.Id,
                 AdSoyad = result.Data.AdSoyad,
                 KullaniciAdi = result.Data.KullaniciAdi,
-                RolMask = (int)result.Data.Rol, 
+                RolMask = (int)result.Data.Rol,
                 AktifMi = result.Data.AktifMi
             };
 
-            FillRolCheckboxes(vm.RolMask); 
-            return View(vm);
-
+            FillRolCheckboxes(vm.RolMask);
+            ViewBag.CurrentPersonelId = CurrentPersonelId();
+            return PartialView("_EditModalPartial", vm);
         }
 
-        // Güncelleme: temel alanlar + rol mask, audit ile
+        // Modal Edit submit (AJAX)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Edit(int id, PersonelEditVm model)
+        public IActionResult EditModal(PersonelEditVm model)
         {
-            if (id != model.Id)
-            {
-                TempData["Error"] = "İstek geçersiz (Id uyuşmazlığı).";
-                return RedirectToAction(nameof(Index));
-            }
-
             if (!ModelState.IsValid)
-            {
-                TempData["Error"] = "Lütfen form alanlarını kontrol ediniz.";
-                FillRolCheckboxes(model.RolMask);
-                return View(model);
-            }
+                return BadRequest("Lütfen form alanlarını kontrol ediniz.");
 
             var updateResult = _service.Update(
-    id: model.Id,
-    adSoyad: model.AdSoyad,
-    kullaniciAdi: model.KullaniciAdi,
-    rolMask: model.RolMask,
-    actorPersonelId: CurrentPersonelId(),
-    actorUsername: CurrentUsername(),
-    ip: ClientIp()
-); 
-
+                id: model.Id,
+                adSoyad: model.AdSoyad,
+                kullaniciAdi: model.KullaniciAdi,
+                rolMask: model.RolMask,
+                actorPersonelId: CurrentPersonelId(),
+                actorUsername: CurrentUsername(),
+                ip: ClientIp()
+            );
 
             if (!updateResult.Success)
-            {
-                _logger.LogWarning("Personel güncelleme başarısız. Id: {Id}. Mesaj: {Message}",
-                    model.Id, updateResult.Message);
-
-                TempData["Error"] = updateResult.Message;
-                FillRolCheckboxes(model.RolMask);
-                return View(model);
-            }
+                return BadRequest(updateResult.Message);
 
             TempData["Success"] = updateResult.Message;
-            return RedirectToAction(nameof(Index));
+            return Json(new { success = true });
         }
 
-        // Aktif/pasif: admin kendi hesabını pasif edemez
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult ToggleAktif(int id)
-        {
-            var actorId = CurrentPersonelId(); 
-            if (actorId.HasValue && actorId.Value == id) 
-            {
-                TempData["Error"] = "Kendi hesabınızı pasif edemezsiniz."; 
-                return RedirectToAction(nameof(Index)); 
-            }
-
-                var result = _service.ToggleAktif(id, CurrentPersonelId(), CurrentUsername(), ClientIp()); 
-
-            TempData[result.Success ? "Success" : "Error"] = result.Message;
-            return RedirectToAction(nameof(Index));
-        }
-
-        [HttpGet] 
-        public IActionResult SetPassword(int id) 
+        // Modal için Şifre içeriği (Partial)
+        [HttpGet]
+        public IActionResult SetPasswordModal(int id)
         {
             var res = _service.GetById(id);
             if (!res.Success || res.Data == null)
-            {
-                TempData["Error"] = res.Message;
-                return RedirectToAction(nameof(Index));
-            }
+                return BadRequest(res.Message);
 
             var vm = new PersonelSetPasswordVm
             {
@@ -220,38 +212,31 @@ namespace RestaurantWeb.Controllers
                 KullaniciAdi = res.Data.KullaniciAdi
             };
 
-            return View(vm);
+            return PartialView("_SetPasswordModalPartial", vm);
         }
 
-        // Şifre yenileme: service tarafı PBKDF2+salt üretir, loglar
-        [HttpPost] 
-        [ValidateAntiForgeryToken] 
-        public IActionResult SetPassword(PersonelSetPasswordVm vm) 
+        // Modal Şifre submit (AJAX)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult SetPasswordModal(PersonelSetPasswordVm vm)
         {
             if (!ModelState.IsValid)
-            {
-                TempData["Error"] = "Lütfen form alanlarını kontrol ediniz.";
-                return View(vm);
-            }
+                return BadRequest("Lütfen form alanlarını kontrol ediniz.");
 
             var result = _service.SetPassword(
-    id: vm.Id,
-    kullaniciAdi: vm.KullaniciAdi,
-    newPassword: vm.NewPassword,
-    actorPersonelId: CurrentPersonelId(),
-    actorUsername: CurrentUsername(),
-    ip: ClientIp()
-); 
-
+                id: vm.Id,
+                kullaniciAdi: vm.KullaniciAdi,
+                newPassword: vm.NewPassword,
+                actorPersonelId: CurrentPersonelId(),
+                actorUsername: CurrentUsername(),
+                ip: ClientIp()
+            );
 
             if (!result.Success)
-            {
-                TempData["Error"] = result.Message;
-                return View(vm);
-            }
+                return BadRequest(result.Message);
 
-            TempData["Success"] = $"'{vm.KullaniciAdi}' kullanıcısının şifresi güncellendi."; 
-            return RedirectToAction(nameof(Index));
+            TempData["Success"] = $"'{vm.KullaniciAdi}' kullanıcısının şifresi güncellendi.";
+            return Json(new { success = true });
         }
 
         // UI: PersonelRol enum’undan checkbox listesi üretir (bitmask)

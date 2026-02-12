@@ -1,0 +1,29 @@
+﻿@model RestaurantWeb.Models.ViewModels.MasaEditVm
+
+<form id="masaEditForm" asp-action="EditModal" asp-controller="Masalar" method="post">
+    @Html.AntiForgeryToken()
+
+    <div id="masaEditError" class="alert alert-danger d-none"></div>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <input asp-for="Id" type="hidden" />
+
+    <div class="mb-3">
+        <label asp-for="MasaNo" class="form-label">Masa No</label>
+        <input asp-for="MasaNo" class="form-control" type="number" min="1" step="1" />
+        <span asp-validation-for="MasaNo" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Kapasite" class="form-label">Kapasite</label>
+        <input asp-for="Kapasite" class="form-control" type="number" min="1" step="1" />
+        <span asp-validation-for="Kapasite" class="text-danger"></span>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+    </div>
+</form>
+
+<partial name="_ValidationScriptsPartial" />

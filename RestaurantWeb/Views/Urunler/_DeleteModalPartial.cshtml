@@ -1,0 +1,25 @@
+﻿@model RestaurantWeb.Models.Urun
+
+<form id="urunDeleteForm" method="post" action="@Url.Action("DeleteModalConfirmed", "Urunler")">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.Id" />
+
+    <div class="alert alert-warning">
+        <div><strong>Ürün:</strong> @Model.Ad</div>
+        <div><strong>Kategori:</strong> @Model.KategoriAd</div>
+        <div><strong>Fiyat:</strong> @Model.Fiyat.ToString("0.00")</div>
+        <div><strong>Durum:</strong> @(Model.AktifMi ? "Aktif" : "Pasif")</div>
+        <div><strong>Oluşturma Tarihi:</strong> @Model.OlusturmaTarihi.ToString("yyyy-MM-dd HH:mm")</div>
+    </div>
+
+    <div class="alert alert-danger">
+        Bu ürünü silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+    </div>
+
+    <div id="urunDeleteError" class="alert alert-danger d-none"></div>
+
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+        <button type="submit" class="btn btn-danger">Evet, Sil</button>
+    </div>
+</form>

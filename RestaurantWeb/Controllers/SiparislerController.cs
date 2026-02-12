@@ -5,6 +5,7 @@
 // - Index/Detay/LogPartial: geçmiş siparişleri ve loglarını görüntüler
 
 using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
@@ -34,7 +35,10 @@ namespace RestaurantWeb.Controllers
 
         public class UpdateDiscountRequest
         {
+            [Range(1, int.MaxValue, ErrorMessage = "Geçersiz sipariş id.")]
             public int SiparisId { get; set; }
+
+            [Range(typeof(decimal), "0", "100", ErrorMessage = "İskonto 0-100 aralığında olmalıdır.")]
             public decimal IskontoOran { get; set; }
         }
 
@@ -155,18 +159,32 @@ namespace RestaurantWeb.Controllers
             return PartialView("_OrderTablePartial", res.Data);
         }
 
-        // İskonto oranını günceller (log için actor gönderilir)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult UpdateDiscount([FromBody] UpdateDiscountRequest req)
         {
-            var actor = User?.Identity?.Name; // aynı
-            var res = _service.UpdateDiscountRate(req.SiparisId, req.IskontoOran, actor); 
+            if (req == null)
+                return BadRequest(new { message = "İstek boş." });
+
+            if (!ModelState.IsValid)
+            {
+                var msg = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .FirstOrDefault() ?? "Geçersiz istek.";
+
+                return BadRequest(new { message = msg });
+            }
+
+            var actor = User?.Identity?.Name;
+            var res = _service.UpdateDiscountRate(req.SiparisId, req.IskontoOran, actor);
+
             if (!res.Success)
                 return BadRequest(new { message = res.Message });
 
             return Ok(new { message = res.Message });
         }
+
 
         // Siparişi ödeme ile kapatır (AJAX). Ödeme yöntemi enum validasyonu yapılır.
         [HttpPost]
@@ -188,6 +206,7 @@ namespace RestaurantWeb.Controllers
             if (!res.Success)
                 return BadRequest(new { message = res.Message });
 
+            TempData["Success"] = res.Message;
             return Ok(new { message = res.Message });
         }
 

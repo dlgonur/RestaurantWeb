@@ -5,13 +5,11 @@
     <a class="btn btn-success" asp-action="Create">Yeni Kategori</a>
 </p>
 
-
 <h2>Kategoriler</h2>
 
 <table class="table table-striped">
     <thead>
         <tr>
-            <th>Id</th>
             <th>Ad</th>
             <th>Aktif</th>
             <th>Oluşturma Tarihi</th>
@@ -22,7 +20,7 @@
         @if (Model == null || !Model.Any())
         {
             <tr>
-                <td colspan="5" class="text-center text-muted">
+                <td colspan="4" class="text-center text-muted">
                     Henüz kategori bulunmuyor.
                 </td>
             </tr>
@@ -31,26 +29,196 @@
         {
             @foreach (var k in Model)
             {
-                <tr>
-                    <td>@k.Id</td>
+                <tr data-kategori-id="@k.Id">
                     <td>@k.Ad</td>
-                    <td>@(k.AktifMi ? "Evet" : "Hayır")</td>
+
+                    <td class="kategori-aktif-text">
+                        @(k.AktifMi ? "Evet" : "Hayır")
+                    </td>
+
                     <td>@k.OlusturmaTarihi.ToString("yyyy-MM-dd HH:mm")</td>
+
                     <td>
-                        <a asp-action="Edit" asp-route-id="@k.Id" class="btn btn-sm btn-warning">Düzenle</a>
-                        <form asp-action="ToggleAktif" method="post" style="display:inline">
+                        <button type="button"
+                                class="btn btn-sm btn-warning btn-kategori-edit"
+                                data-id="@k.Id"
+                                data-name="@k.Ad">
+                            Düzenle
+                        </button>
+
+                        <form asp-action="ToggleAktif"
+                              method="post"
+                              style="display:inline"
+                              class="kategori-toggle-form">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@k.Id" />
-                            <button type="submit" class="btn btn-sm btn-secondary">
+                            <button type="submit" class="btn btn-sm btn-secondary kategori-toggle-btn">
                                 @(k.AktifMi ? "Pasif Yap" : "Aktif Yap")
                             </button>
                         </form>
-                        <a asp-action="Delete" asp-route-id="@k.Id" class="btn btn-sm btn-danger">Sil</a>
-                    </td>
 
+                        <button type="button"
+                                class="btn btn-sm btn-danger btn-kategori-delete"
+                                data-id="@k.Id"
+                                data-name="@k.Ad">
+                            Sil
+                        </button>
+                    </td>
                 </tr>
             }
+
         }
     </tbody>
-
 </table>
+
+<div class="modal fade" id="kategoriModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="kategoriModalTitle">İşlem</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body" id="kategoriModalBody">
+                <div class="text-muted">Yükleniyor...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const modalEl = document.getElementById("kategoriModal");
+            const modalBody = document.getElementById("kategoriModalBody");
+            const modalTitle = document.getElementById("kategoriModalTitle");
+            const bsModal = new bootstrap.Modal(modalEl);
+
+            async function loadPartial(url, titleText) {
+                modalTitle.textContent = titleText || "İşlem";
+                modalBody.innerHTML = '<div class="text-muted">Yükleniyor...</div>';
+                bsModal.show();
+
+                const res = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+                const html = await res.text();
+
+                if (!res.ok) {
+                    modalBody.innerHTML = `<div class="alert alert-danger">${html}</div>`;
+                    return;
+                }
+
+                modalBody.innerHTML = html;
+                wireForms();
+            }
+
+            function wireForms() {
+                const editForm = document.getElementById("kategoriEditForm");
+                if (editForm && editForm.dataset.bound !== "1") {
+                    editForm.dataset.bound = "1";
+                    editForm.addEventListener("submit", async function (e) {
+                        e.preventDefault();
+
+                        const err = document.getElementById("kategoriEditError");
+                        if (err) { err.classList.add("d-none"); err.textContent = ""; }
+
+                        const formData = new FormData(editForm);
+                        const res = await fetch(editForm.action, { method: "POST", body: formData });
+
+                        if (!res.ok) {
+                            const text = await res.text();
+                            if (err) { err.textContent = text; err.classList.remove("d-none"); }
+                            return;
+                        }
+
+                        const json = await res.json();
+                        if (json && json.success) {
+                            window.location.reload();
+                        }
+                    });
+                }
+
+                const deleteForm = document.getElementById("kategoriDeleteForm");
+                if (deleteForm && deleteForm.dataset.bound !== "1") {
+                    deleteForm.dataset.bound = "1";
+                    deleteForm.addEventListener("submit", async function (e) {
+                        e.preventDefault();
+
+                        const err = document.getElementById("kategoriDeleteError");
+                        if (err) { err.classList.add("d-none"); err.textContent = ""; }
+
+                        const formData = new FormData(deleteForm);
+                        const res = await fetch(deleteForm.action, { method: "POST", body: formData });
+
+                        if (!res.ok) {
+                            const text = await res.text();
+                            if (err) { err.textContent = text; err.classList.remove("d-none"); }
+                            return;
+                        }
+
+                        const json = await res.json();
+                        if (json && json.success) {
+                            window.location.reload();
+                        }
+                    });
+                }
+            }
+
+                // Toggle: sayfa yenilemeden aktif/pasif
+        document.addEventListener("submit", async function (e) { 
+            const form = e.target.closest(".kategori-toggle-form"); 
+            if (!form) return;
+
+            e.preventDefault(); 
+
+            const row = form.closest("tr");
+            const aktifCell = row?.querySelector(".kategori-aktif-text");
+            const btn = form.querySelector(".kategori-toggle-btn");
+
+            const formData = new FormData(form);
+
+            const res = await fetch(form.action, {
+                method: "POST",
+                body: formData,
+                headers: { "X-Requested-With": "XMLHttpRequest" } 
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                alert(text); 
+                return;
+            }
+
+            const json = await res.json();
+            if (!json || !json.success) {
+                alert(json?.message || "İşlem başarısız.");
+                return;
+            }
+
+            // DOM üzerinden flip (backend'den state almıyoruz)
+            const isAktif = (aktifCell?.textContent || "").trim() === "Evet";
+            const newAktif = !isAktif;
+
+            if (aktifCell) aktifCell.textContent = newAktif ? "Evet" : "Hayır";
+            if (btn) btn.textContent = newAktif ? "Pasif Yap" : "Aktif Yap";
+
+            // alert(json.message);
+        });
+
+
+            document.addEventListener("click", function (e) {
+                const editBtn = e.target.closest(".btn-kategori-edit");
+                if (editBtn) {
+                    const id = editBtn.getAttribute("data-id");
+                    loadPartial(`@Url.Action("EditModal", "Kategoriler")?id=${id}`, "Kategori Düzenle");
+                    return;
+                }
+
+                const delBtn = e.target.closest(".btn-kategori-delete");
+                if (delBtn) {
+                    const id = delBtn.getAttribute("data-id");
+                    loadPartial(`@Url.Action("DeleteModal", "Kategoriler")?id=${id}`, "Kategori Sil");
+                    return;
+                }
+            });
+        })();
+    </script>
+}

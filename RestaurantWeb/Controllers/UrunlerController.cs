@@ -8,8 +8,6 @@ using RestaurantWeb.Models;
 using RestaurantWeb.Models.ViewModels;
 using RestaurantWeb.Services;
 
-
-
 namespace RestaurantWeb.Controllers
 {
     [Authorize(Roles = "Admin")]
@@ -18,12 +16,13 @@ namespace RestaurantWeb.Controllers
         private readonly ILogger<UrunlerController> _logger;
         private readonly IUrunService _service; 
         private readonly IKategoriService _kategoriService;
-        public UrunlerController(IUrunService service, IKategoriService kategoriService, ILogger<UrunlerController> logger) 
+        public UrunlerController(IUrunService service, IKategoriService kategoriService, ILogger<UrunlerController> logger)
         {
-            _service = service; 
-            _kategoriService = kategoriService; 
+            _service = service;
+            _kategoriService = kategoriService;
             _logger = logger;
         }
+
 
         // Ürünleri kategori bilgisiyle listeler
         public IActionResult Index()
@@ -116,19 +115,16 @@ namespace RestaurantWeb.Controllers
 			return RedirectToAction("Index");
 		}
 
-		[HttpGet]
-        public IActionResult Edit(int id)	
+        [HttpGet]
+        public IActionResult EditModal(int id)
         {
-            var result = _service.GetByIdWithKategori(id); 
-
-            if (!result.Success || result.Data == null) 
-            {
-                TempData["Error"] = result.Message; 
-                return RedirectToAction("Index"); 
-            } 
+            var result = _service.GetByIdWithKategori(id);
+            if (!result.Success || result.Data == null)
+                return BadRequest(result.Message);
 
             FillKategoriDropdown(result.Data.KategoriId);
-            return View(new UrunEditVm
+
+            var vm = new UrunEditVm
             {
                 Id = result.Data.Id,
                 KategoriId = result.Data.KategoriId,
@@ -136,75 +132,49 @@ namespace RestaurantWeb.Controllers
                 Fiyat = result.Data.Fiyat,
                 Stok = result.Data.Stok,
                 ResimVar = result.Data.Resim != null && result.Data.Resim.Length > 0
-            });
+            };
 
-
+            return PartialView("_EditModalPartial", vm);
         }
 
-        // Ürün güncelleme (PRG)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Edit(int id, UrunEditVm model) 
+        public IActionResult EditModal(UrunEditVm model)
         {
-            // Route id ile model id tutarlılığı
-            if (id != model.Id) 
-            {
-                TempData["Error"] = "İstek geçersiz (Id uyuşmazlığı)."; 
-                return RedirectToAction("Index"); 
-            }
-
             if (!ModelState.IsValid)
-            {
-                TempData["Error"] = "Lütfen form alanlarını kontrol ediniz.";
-                FillKategoriDropdown(model.KategoriId);
-                return View(model);
-            }
+                return BadRequest("Lütfen form alanlarını kontrol ediniz.");
 
-            // Aynı anda hem "kaldır" hem "yeni yükle" olamaz
-            if (model.ResmiKaldir && model.Resim != null && model.Resim.Length > 0) 
-            {
-                TempData["Error"] = "Lütfen ya yeni resim seçin ya da mevcut resmi kaldırın (ikisi aynı anda olamaz)."; 
-                FillKategoriDropdown(model.KategoriId); 
-                return View(model); 
-            }
+            if (model.ResmiKaldir && model.Resim != null && model.Resim.Length > 0)
+                return BadRequest("Lütfen ya yeni resim seçin ya da mevcut resmi kaldırın (ikisi aynı anda olamaz).");
 
-            byte[]? resimBytes = null; 
-            string? resimMime = null;  
-            string? resimAdi = null;   
+            byte[]? resimBytes = null;
+            string? resimMime = null;
+            string? resimAdi = null;
             bool resimGuncellensin = false;
 
-            // Resim güncelleme kararı: kaldır / yeni yükle / dokunma
-            if (model.ResmiKaldir) 
+            if (model.ResmiKaldir)
             {
-                resimGuncellensin = true;  
+                resimGuncellensin = true;
             }
-            else if (model.Resim != null && model.Resim.Length > 0) 
+            else if (model.Resim != null && model.Resim.Length > 0)
             {
-                const long MaxImageBytes = 5 * 1024 * 1024; // 5 MB 
+                const long MaxImageBytes = 5 * 1024 * 1024;
 
-                if (model.Resim.Length > MaxImageBytes) 
+                if (model.Resim.Length > MaxImageBytes)
+                    return BadRequest("Resim boyutu en fazla 5 MB olabilir.");
+
+                if (!model.Resim.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                    return BadRequest("Sadece resim dosyaları yüklenebilir.");
+
+                using (var ms = new MemoryStream())
                 {
-                    TempData["Error"] = "Resim boyutu en fazla 5 MB olabilir."; 
-                    FillKategoriDropdown(model.KategoriId); 
-                    return View(model); 
+                    model.Resim.CopyTo(ms);
+                    resimBytes = ms.ToArray();
                 }
 
-                if (!model.Resim.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) 
-                {
-                    TempData["Error"] = "Sadece resim dosyaları yüklenebilir."; 
-                    FillKategoriDropdown(model.KategoriId); 
-                    return View(model); 
-                }
-
-                using (var ms = new MemoryStream()) 
-                {
-                    model.Resim.CopyTo(ms); 
-                    resimBytes = ms.ToArray(); 
-                }
-
-                resimMime = model.Resim.ContentType; 
-                resimAdi = Path.GetFileName(model.Resim.FileName); 
-                resimGuncellensin = true; 
+                resimMime = model.Resim.ContentType;
+                resimAdi = Path.GetFileName(model.Resim.FileName);
+                resimGuncellensin = true;
             }
 
             var ad = model.Ad;
@@ -218,71 +188,71 @@ namespace RestaurantWeb.Controllers
                 resimMime,
                 resimAdi,
                 resimGuncellensin
-            ); 
+            );
 
             if (!updateResult.Success)
-            {
-                _logger.LogWarning(
-                    "Ürün güncelleme başarısız. Id: {Id}, KategoriId: {KategoriId}, Ad: {Ad}, Fiyat: {Fiyat}, Stok: {Stok}, ResimGuncellensin: {ResimGuncellensin}. Mesaj: {Message}",
-                    model.Id, model.KategoriId, ad, model.Fiyat, model.Stok, resimGuncellensin, updateResult.Message
-                ); 
-
-                TempData["Error"] = updateResult.Message;
-                FillKategoriDropdown(model.KategoriId);
-                return View(model);
-            }
+                return BadRequest(updateResult.Message);
 
             TempData["Success"] = updateResult.Message;
-            return RedirectToAction("Index");
+            return Json(new { success = true });
         }
 
         [HttpGet]
-        public IActionResult Delete(int id) 
+        public IActionResult DeleteModal(int id)
         {
-            var result = _service.GetByIdWithKategori(id); 
+            var result = _service.GetByIdWithKategori(id);
+            if (!result.Success || result.Data == null)
+                return BadRequest(result.Message);
 
-            if (!result.Success || result.Data == null) 
-            {
-                TempData["Error"] = result.Message; 
-                return RedirectToAction("Index"); 
-            } 
-
-            return View(result.Data); 
+            return PartialView("_DeleteModalPartial", result.Data);
         }
-
-        // Silme (PRG)
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [ActionName("Delete")] 
-        public IActionResult DeleteConfirmed(int id) 
-        {
-            var result = _service.Delete(id); 
-
-            TempData[result.Success ? "Success" : "Error"] = result.Message; 
-            return RedirectToAction("Index"); 
-        } 
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult ToggleAktif(int id) 
+        public IActionResult DeleteModalConfirmed(int id)
         {
-            var result = _service.ToggleAktif(id); 
+            var result = _service.Delete(id);
+            if (!result.Success)
+                return BadRequest(result.Message);
 
-            TempData[result.Success ? "Success" : "Error"] = result.Message; 
-            return RedirectToAction("Index"); 
+            TempData["Success"] = result.Message;
+            return Json(new { success = true });
         }
 
-        // Ürün resmini bytes olarak döner (UI <img src="...">)
         [HttpGet]
         public IActionResult Resim(int id)
         {
-            var result = _service.GetResim(id); 
+            var result = _service.GetResim(id);
             if (!result.Success || result.Data.Bytes == null || result.Data.Bytes.Length == 0)
                 return NotFound();
 
-            // Kısa süre cache: aynı sayfada tekrar tekrar istek atılmasını azaltır
-            Response.Headers["Cache-Control"] = "public,max-age=600"; // 10 dk
+            Response.Headers["Cache-Control"] = "public,max-age=600";
             return File(result.Data.Bytes, result.Data.Mime);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ToggleAktif(int id)
+        {
+            var result = _service.ToggleAktif(id);
+
+            // AJAX isteği mi kontrolü
+            var isAjax = string.Equals(
+                Request.Headers["X-Requested-With"],
+                "XMLHttpRequest",
+                StringComparison.OrdinalIgnoreCase); 
+
+            if (isAjax) 
+            {
+                return Json(new
+                {
+                    success = result.Success,
+                    message = result.Message
+                }); 
+            }
+
+            TempData[result.Success ? "Success" : "Error"] = result.Message;
+            return RedirectToAction("Index");
         }
 
         // Kategori dropdown’ını ViewBag üzerinden view’a hazırlar
@@ -305,8 +275,6 @@ namespace RestaurantWeb.Controllers
                 }) 
                 .ToList(); 
         } 
-
-
 
     }
 }

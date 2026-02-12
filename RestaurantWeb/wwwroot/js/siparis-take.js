@@ -27,6 +27,41 @@
     const cart = {};
     let productState = [];
 
+    function showToast(type, message, delay = 2500) {
+        // type: "success" | "danger" | "info"
+        const containerId = "appToastContainer";
+
+        let container = document.getElementById(containerId);
+        if (!container) {
+            container = document.createElement("div");
+            container.id = containerId;
+            container.className = "toast-container position-fixed top-0 end-0 p-3";
+            container.style.zIndex = "1100";
+            document.body.appendChild(container);
+        }
+
+        const toastEl = document.createElement("div");
+        toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+        toastEl.setAttribute("role", "alert");
+        toastEl.setAttribute("aria-live", "assertive");
+        toastEl.setAttribute("aria-atomic", "true");
+
+        toastEl.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+
+        container.appendChild(toastEl);
+
+        const t = new bootstrap.Toast(toastEl, { delay });
+        t.show();
+
+        toastEl.addEventListener("hidden.bs.toast", () => toastEl.remove());
+    }
+
+
     function money(n) { return Number(n).toFixed(2); }
 
     function calcTotals() {
@@ -39,10 +74,7 @@
             subtotal += fiyat * adet;
         }
 
-        // iskonto oranı (UI input) 
-        let oran = parseFloat(discountEl.value || "0"); 
-        if (isNaN(oran)) oran = 0; 
-        oran = Math.max(0, Math.min(100, oran)); 
+        let oran = parseDiscount(discountEl.value);
 
         const total = subtotal - (subtotal * (oran / 100)); 
 
@@ -228,10 +260,58 @@
         }
     });
 
+    function normalizeDiscountText(s) {
+        s = String(s ?? "").trim();
+
+        // sadece rakam ve tek ayraç (nokta/virgül) kalsın
+        s = s.replace(/[^\d.,]/g, "");
+
+        // ilk ayraçtan sonrakilerde nokta/virgülleri kaldır (tek ayraç kuralı)
+        const idx = s.search(/[.,]/);
+        if (idx !== -1) {
+            const head = s.slice(0, idx + 1);
+            const tail = s.slice(idx + 1).replace(/[.,]/g, "");
+            s = head + tail;
+        }
+
+        return s;
+    }
+    function parseDiscount(s) {
+        s = String(s ?? "").trim().replace(",", ".");
+        if (s === "") return 0;
+
+        const n = Number(s);
+        if (!Number.isFinite(n)) return 0;
+
+        return Math.max(0, Math.min(100, n));
+    }
+
+    // yazarken engelle (eksi, e/E, +)
+    discountEl.addEventListener("keydown", (e) => {
+        if (["e", "E", "-", "+"].includes(e.key)) {
+            e.preventDefault();
+        }
+    });
+
+    // yazarken sanitize + clamp
+    discountEl.addEventListener("input", () => {
+        const cleaned = normalizeDiscountText(discountEl.value);
+        if (cleaned !== discountEl.value) {
+            discountEl.value = cleaned;
+        }
+
+        const v = parseDiscount(discountEl.value);
+        if (discountEl.value !== "" && String(v) !== discountEl.value.replace(",", ".")) {
+            discountEl.value = String(v);
+        }
+
+        calcTotals();
+    });
+
+
     discountEl.addEventListener('change', async () => {
-        let oran = parseFloat(discountEl.value || "0");
-        if (isNaN(oran)) oran = 0;
-        oran = Math.max(0, Math.min(100, oran));
+
+        let oran = parseDiscount(discountEl.value);
 
         statusEl.innerText = "İskonto güncelleniyor...";
 
@@ -305,6 +385,8 @@
 
             // adisyonu yenile
             await refreshSavedOrders();
+
+            showToast("success", data?.message ?? "Sepetteki ürünler adisyona eklendi.");
 
             statusEl.innerText = "";
             btnSubmit.disabled = false;

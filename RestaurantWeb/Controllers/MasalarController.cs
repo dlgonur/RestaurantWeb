@@ -72,88 +72,89 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction("Index");
         }
 
+        // Modal için Edit içeriği (Partial)
         [HttpGet]
-        public IActionResult Edit(int id)
+        public IActionResult EditModal(int id)
         {
-            var result = _service.GetById(id); 
+            var result = _service.GetById(id);
             if (!result.Success || result.Data == null)
-            {
-                TempData["Error"] = result.Message;
-                return RedirectToAction("Index");
-            }
+                return BadRequest(result.Message);
 
-            return View(new MasaEditVm
+            var vm = new MasaEditVm
             {
                 Id = result.Data.Id,
                 MasaNo = result.Data.MasaNo,
                 Kapasite = result.Data.Kapasite,
                 AktifMi = result.Data.AktifMi
-            });
+            };
+
+            return PartialView("_EditModalPartial", vm);
         }
 
-        // Masa güncelleme (PRG)
+        // Modal Edit submit (AJAX)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Edit(int id, MasaEditVm model)
+        public IActionResult EditModal(MasaEditVm model)
         {
-            if (id != model.Id)
-            {
-                TempData["Error"] = "İstek geçersiz (Id uyuşmazlığı).";
-                return RedirectToAction("Index");
-            }
-
             if (!ModelState.IsValid)
-            {
-                TempData["Error"] = "Lütfen form alanlarını kontrol ediniz.";
-                return View(model);
-            }
+                return BadRequest("Lütfen form alanlarını kontrol ediniz.");
 
-            var result = _service.Update(model.Id, model.MasaNo, model.Kapasite); 
+            var result = _service.Update(model.Id, model.MasaNo, model.Kapasite);
 
             if (!result.Success)
-            {
-                _logger.LogWarning("Masa güncelleme başarısız. Id: {Id}, MasaNo: {MasaNo}, Kapasite: {Kapasite}. Mesaj: {Message}",
-                    model.Id, model.MasaNo, model.Kapasite, result.Message);
-
-                TempData["Error"] = result.Message;
-                return View(model);
-            }
+                return BadRequest(result.Message);
 
             TempData["Success"] = result.Message;
-            return RedirectToAction("Index");
+            return Json(new { success = true });
         }
+
+        // Modal için Delete içeriği (Partial)
+        [HttpGet]
+        public IActionResult DeleteModal(int id)
+        {
+            var result = _service.GetById(id);
+            if (!result.Success || result.Data == null)
+                return BadRequest(result.Message);
+
+            return PartialView("_DeleteModalPartial", result.Data);
+        }
+
+        // Modal Delete submit (AJAX)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeleteModalConfirmed(int id)
+        {
+            var result = _service.Delete(id);
+
+            if (!result.Success)
+                return BadRequest(result.Message);
+
+            TempData["Success"] = result.Message;
+            return Json(new { success = true });
+        }
+
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Toggle(int id)
         {
-            var result = _service.ToggleAktif(id); 
-            TempData[result.Success ? "Success" : "Error"] = result.Message;
-            return RedirectToAction("Index");
-        }
+            var result = _service.ToggleAktif(id);
 
-        [HttpGet]
-        public IActionResult Delete(int id)
-        {
-            var result = _service.GetById(id); 
-            if (!result.Success || result.Data == null)
+            // AJAX ise JSON dön (sayfa yenilenmesin)
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
-                TempData["Error"] = result.Message;
-                return RedirectToAction("Index");
-            }
-            return View(result.Data);
-        }
+                if (!result.Success)
+                    return BadRequest(result.Message);
 
-        // Silme (PRG)
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [ActionName("Delete")]
-        public IActionResult DeleteConfirmed(int id)
-        {
-            var result = _service.Delete(id); 
+                return Json(new { success = true, message = result.Message, aktifMi = result.Data });
+            }
+
+            // Normal post (fallback)
             TempData[result.Success ? "Success" : "Error"] = result.Message;
             return RedirectToAction("Index");
         }
+
+
 
         // Operasyon ekranı: masaların canlı durumu + doluluk metrikleri
         [HttpGet]
@@ -257,9 +258,6 @@ namespace RestaurantWeb.Controllers
             TempData[res.Success ? "Success" : "Error"] = res.Message;
             return RedirectToAction("Board");
         }
-
-
-
 
     }
 }

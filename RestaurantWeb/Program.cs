@@ -2,8 +2,10 @@
 // DI kayıtları, auth ayarları, middleware pipeline ve başlangıç seed işlemleri burada tanımlanır.
 
 using RestaurantWeb.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using RestaurantWeb.Services; 
+using RestaurantWeb.Services;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,10 +58,40 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.LogoutPath = "/Auth/Logout";
         options.AccessDeniedPath = "/Auth/Denied";
         options.Cookie.Name = "RestaurantWeb.Auth";
+
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
-    });
 
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnValidatePrincipal = async ctx =>
+            {
+                var userIdStr = ctx.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(userIdStr, out var userId))
+                {
+                    ctx.RejectPrincipal();
+                    await ctx.HttpContext.SignOutAsync();
+                    return;
+                }
+
+                using var scope = ctx.HttpContext.RequestServices.CreateScope();
+                var repo = scope.ServiceProvider.GetRequiredService<PersonelRepository>();
+
+                var activeRes = repo.IsActiveById(userId);
+
+                // bulunamadı / hata / pasif -> oturumu düşür
+                if (!activeRes.Success || activeRes.Data == false)
+                {
+                    ctx.RejectPrincipal();
+                    await ctx.HttpContext.SignOutAsync();
+                }
+            }
+        };
+    });
 
 var app = builder.Build();
 

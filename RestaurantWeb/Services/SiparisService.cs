@@ -81,6 +81,9 @@ namespace RestaurantWeb.Services
         // İskonto oranını günceller; actor bilgisi log/iz kaydı için kullanılır
         public OperationResult UpdateDiscountRate(int siparisId, decimal iskontoOran, string? actorUsername)
         {
+            if (siparisId <= 0) return OperationResult.Fail("Geçersiz sipariş id.");
+            if (iskontoOran < 0 || iskontoOran > 100) return OperationResult.Fail("İskonto 0-100 aralığında olmalıdır.");
+
             using var conn = _cf.Create();
             conn.Open();
 

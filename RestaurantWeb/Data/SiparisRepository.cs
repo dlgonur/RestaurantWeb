@@ -376,15 +376,15 @@ namespace RestaurantWeb.Data
                     stokCmd.Parameters.AddWithValue("@urun_id", g.UrunId);
                     stokCmd.Parameters.AddWithValue("@adet", g.Adet);
 
-                    var affected = stokCmd.ExecuteNonQuery(); // *
-                    if (affected == 0) // *
-                        return OperationResult.Fail($"Stok yetersiz. (UrunId: {g.UrunId})"); // *
+                    var affected = stokCmd.ExecuteNonQuery(); 
+                    if (affected == 0) 
+                        return OperationResult.Fail($"Stok yetersiz. (UrunId: {g.UrunId})"); 
                 }
 
                 // 8) Finansal alanlar tek noktadan güncellensin
                 RecalculateTotals(conn, tx, siparisId);
 
-                return OperationResult.Ok("Sipariş kaydedildi.");
+                return OperationResult.Ok("Sepetteki ürünler adisyona eklendi.");
             }
             catch (PostgresException ex)
             {

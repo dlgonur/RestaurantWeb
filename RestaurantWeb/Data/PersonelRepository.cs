@@ -241,6 +241,34 @@ using Npgsql;
                 }
             }
 
+            public OperationResult<bool> IsActiveById(int id)
+            {
+                if (id <= 0) return OperationResult<bool>.Fail("Geçersiz personel id.");
+
+                try
+                {
+                    using var conn = new NpgsqlConnection(_connStr);
+                    conn.Open();
+
+                    const string sql = @"SELECT aktif_mi FROM personeller WHERE id = @id;";
+                    using var cmd = new NpgsqlCommand(sql, conn);
+                    cmd.Parameters.AddWithValue("@id", id);
+
+                    var obj = cmd.ExecuteScalar();
+                    if (obj == null || obj == DBNull.Value)
+                        return OperationResult<bool>.Fail("Personel bulunamadı.");
+
+                    return OperationResult<bool>.Ok((bool)obj);
+                }
+                catch (PostgresException ex)
+                {
+                    return OperationResult<bool>.Fail($"Veritabanı işlemi sırasında bir hata oluştu. (Kod: {ex.SqlState})");
+                }
+                catch
+                {
+                    return OperationResult<bool>.Fail("Beklenmeyen bir hata oluştu.");
+                }
+            }
 
             public OperationResult Update(int id, string adSoyad, string kullaniciAdi, PersonelRol rol)
             {

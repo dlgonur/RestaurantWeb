@@ -1,13 +1,8 @@
 ﻿@model RestaurantWeb.Models.ViewModels.UrunEditVm
 @using Microsoft.AspNetCore.Mvc.Rendering
 
-<h2>Ürün Güncelle</h2>
-
-<form asp-action="Edit" method="post" enctype="multipart/form-data">
+<form id="urunEditForm" method="post" enctype="multipart/form-data" action="@Url.Action("EditModal", "Urunler")">
     @Html.AntiForgeryToken()
-
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
     <input asp-for="Id" type="hidden" />
 
     <div class="mb-3">
@@ -42,9 +37,7 @@
         <div class="mb-3 form-check">
             <input asp-for="ResmiKaldir" class="form-check-input" type="checkbox" />
             <label asp-for="ResmiKaldir" class="form-check-label">Mevcut görseli kaldır</label>
-            <div class="form-text">
-                Bu seçenek işaretlenirse ürünün kayıtlı görseli silinir.
-            </div>
+            <div class="form-text">Bu seçenek işaretlenirse ürünün kayıtlı görseli silinir.</div>
         </div>
     }
     else
@@ -61,10 +54,12 @@
         <span asp-validation-for="Resim" class="text-danger"></span>
     </div>
 
-    <button type="submit" class="btn btn-primary">Güncelle</button>
-    <a asp-action="Index" class="btn btn-secondary">İptal</a>
+    <div id="urunEditError" class="alert alert-danger d-none"></div>
+
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+    </div>
 </form>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}
+<partial name="_ValidationScriptsPartial" />

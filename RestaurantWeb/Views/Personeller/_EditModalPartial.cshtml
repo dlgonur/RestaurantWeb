@@ -1,0 +1,93 @@
+﻿@model RestaurantWeb.Models.ViewModels.PersonelEditVm
+@using RestaurantWeb.Models
+
+@{
+    int? currentId = null;
+
+    try
+    {
+        // Controller: ViewBag.CurrentPersonelId = CurrentPersonelId();
+        if (ViewBag.CurrentPersonelId != null)
+        {
+            currentId = (int)ViewBag.CurrentPersonelId;
+        }
+    }
+    catch
+    {
+        currentId = null;
+    }
+
+    var isSelf = currentId.HasValue && currentId.Value == Model.Id;
+    var adminValue = (int)PersonelRol.Admin;
+}
+
+<form id="personelEditForm" asp-action="EditModal" method="post">
+    @Html.AntiForgeryToken()
+
+    <div id="personelEditError" class="alert alert-danger d-none"></div>
+
+    <div class="mb-2 text-muted">
+        Personel: <strong>@Model.KullaniciAdi</strong>
+    </div>
+
+    <input asp-for="Id" type="hidden" />
+
+    <div class="mb-3">
+        <label asp-for="AdSoyad" class="form-label">Ad Soyad</label>
+        <input asp-for="AdSoyad" class="form-control" />
+        <span asp-validation-for="AdSoyad" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="KullaniciAdi" class="form-label">Kullanıcı Adı</label>
+        <input asp-for="KullaniciAdi" class="form-control" />
+        <span asp-validation-for="KullaniciAdi" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Roller</label>
+
+        <input asp-for="RolMask" type="hidden" />
+
+        <div class="d-flex flex-wrap gap-3">
+            @foreach (var r in (IEnumerable<dynamic>)ViewBag.RoleOptions)
+            {
+                var cbId = $"rol_{r.Value}";
+                var isAdminRole = ((int)r.Value == adminValue);
+                var disableAdminForSelf = isSelf && isAdminRole;
+
+                <div class="form-check">
+                    <input class="form-check-input role-cb"
+                           type="checkbox"
+                           id="@cbId"
+                           value="@r.Value"
+                           @(r.Checked ? "checked" : "")
+                           @(disableAdminForSelf ? "disabled" : "") />
+                    <label class="form-check-label" for="@cbId">@r.Text</label>
+                </div>
+            }
+        </div>
+
+        @if (isSelf)
+        {
+            <div class="form-text text-warning">
+                Kendi hesabınızda Admin rolü kaldırılamaz.
+            </div>
+        }
+        else
+        {
+            <div class="form-text">Bir personel birden fazla role sahip olabilir (örn. Garson + Kasa).</div>
+        }
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Aktif Durum</label>
+        <input class="form-control" value="@(Model.AktifMi ? "Aktif" : "Pasif")" disabled />
+        <div class="form-text">Aktif/Pasif durumu listeden buton ile değiştirilecektir.</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+    </div>
+</form>

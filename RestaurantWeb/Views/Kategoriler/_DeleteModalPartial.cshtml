@@ -1,0 +1,55 @@
+﻿@model RestaurantWeb.Models.ViewModels.KategoriDeleteVm
+
+<form id="kategoriDeleteForm" method="post" action="@Url.Action("DeleteModalConfirmed", "Kategoriler")">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.Kategori.Id" />
+
+    @if (Model.HasProducts)
+    {
+        <div class="alert alert-danger">
+            Bu kategoriye bağlı ürünler bulunduğu için silinemez.
+            Önce ürünleri silmeli veya başka kategoriye taşımalısınız.
+        </div>
+
+        @if (Model.BagliUrunler != null && Model.BagliUrunler.Any())
+        {
+            <h6>Bağlı ürünler (örnek)</h6>
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        <th>Ad</th>
+                        <th>Fiyat</th>
+                        <th>Aktif</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model.BagliUrunler)
+                    {
+                        <tr>
+                            <td>@u.Ad</td>
+                            <td>@u.Fiyat</td>
+                            <td>@(u.AktifMi ? "Evet" : "Hayır")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Kapat</button>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <strong>@Model.Kategori.Ad</strong> kategorisini silmek istediğinize emin misiniz?
+        </div>
+
+        <div id="kategoriDeleteError" class="alert alert-danger d-none"></div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+            <button type="submit" class="btn btn-danger">Evet, Sil</button>
+        </div>
+    }
+</form>

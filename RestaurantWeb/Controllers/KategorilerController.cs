@@ -72,93 +72,66 @@ namespace RestaurantWeb.Controllers
             return RedirectToAction("Index");
         }
 
-
+        // Modal için Edit içeriği (Partial)
         [HttpGet]
-        public IActionResult Edit(int id)
+        public IActionResult EditModal(int id)
         {
             var result = _service.GetById(id);
 
-            if (!result.Success)
+            if (!result.Success || result.Data == null)
+                return BadRequest(result.Message);
+
+            var vm = new KategoriEditVm
             {
-                TempData["Error"] = result.Message;
-                return RedirectToAction("Index");
-            }
+                Id = result.Data.Id,
+                Ad = result.Data.Ad
+            };
 
-            return View(new KategoriEditVm { Id = result.Data!.Id, Ad = result.Data.Ad }); 
-
+            return PartialView("_EditModalPartial", vm);
         }
 
+        // Modal Edit submit (AJAX)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Edit(int id, KategoriEditVm model) 
+        public IActionResult EditModal(KategoriEditVm model)
         {
-            if (id != model.Id) 
-            {
-                TempData["Error"] = "İstek geçersiz (Id uyuşmazlığı)."; 
-                return RedirectToAction("Index"); 
-            }
+            if (!ModelState.IsValid)
+                return BadRequest("Lütfen form alanlarını kontrol ediniz.");
 
-            if (!ModelState.IsValid) 
-            {
-                TempData["Error"] = "Lütfen form alanlarını kontrol ediniz."; 
-                return View(model); 
-            }
-
-            var ad = model.Ad.Trim(); 
-            var result = _service.Update(id, ad);
+            var ad = model.Ad.Trim();
+            var result = _service.Update(model.Id, ad);
 
             if (!result.Success)
-            {
-                _logger.LogWarning("Kategori güncelleme başarısız. Id: {Id}, Ad: {Ad}. Mesaj: {Message}", id, ad, result.Message); 
-                TempData["Error"] = result.Message;
-                return View(model); 
-            }
+                return BadRequest(result.Message);
 
             TempData["Success"] = result.Message;
-            return RedirectToAction("Index");
+            return Json(new { success = true });
         }
 
-        // Silme önizleme ekranı (bağlı ürünleri gösterir)
+        // Modal için Delete içeriği (Partial)
         [HttpGet]
-        public IActionResult Delete(int id)
+        public IActionResult DeleteModal(int id)
         {
-            var vmRes = _service.GetDeleteVm(id, previewLimit: 20); 
-            if (!vmRes.Success || vmRes.Data == null) 
-            {
-                TempData["Error"] = vmRes.Message;
-                return RedirectToAction("Index");
-            }
+            var vmRes = _service.GetDeleteVm(id, previewLimit: 20);
+            if (!vmRes.Success || vmRes.Data == null)
+                return BadRequest(vmRes.Message);
 
-            return View(vmRes.Data); 
+            return PartialView("_DeleteModalPartial", vmRes.Data);
         }
 
-        // Silme (PRG) - ürün varsa silme engellenir ve Delete ekranında kalınır
+        // Modal Delete submit (AJAX)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [ActionName("Delete")]
-        public IActionResult DeleteConfirmed(int id)
+        public IActionResult DeleteModalConfirmed(int id)
         {
-            var delRes = _service.DeleteIfNoProducts(id); 
+            var delRes = _service.DeleteIfNoProducts(id);
 
-            if (!delRes.Success)  
-            {
-                // Kullanıcıyı Index'e fırlatma; Delete ekranında kal 
-                ModelState.AddModelError("", delRes.Message); 
-
-                var vmRes = _service.GetDeleteVm(id, previewLimit: 20); 
-                if (!vmRes.Success || vmRes.Data == null)
-                {
-                    TempData["Error"] = vmRes.Message;
-                    return RedirectToAction("Index");
-                }
-
-                return View("Delete", vmRes.Data); 
-            }
+            if (!delRes.Success)
+                return BadRequest(delRes.Message);
 
             TempData["Success"] = delRes.Message;
-            return RedirectToAction("Index");
+            return Json(new { success = true });
         }
-
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -166,6 +139,14 @@ namespace RestaurantWeb.Controllers
         {
             var result = _service.ToggleAktif(id);
 
+            // AJAX (fetch) isteği ise redirect değil JSON dön
+            var isAjax = string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase); 
+            if (isAjax) 
+            {
+                return Json(new { success = result.Success, message = result.Message }); 
+            }
+
+            // Normal form submit fallback (JS kapalıysa da çalışsın)
             TempData[result.Success ? "Success" : "Error"] = result.Message;
             return RedirectToAction("Index");
         }

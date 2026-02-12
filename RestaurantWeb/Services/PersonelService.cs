@@ -160,6 +160,20 @@ namespace RestaurantWeb.Services
             var oldRes = _repo.GetById(id);
             var old = oldRes.Success ? oldRes.Data : null;
 
+            if (old == null)
+                return OperationResult.Fail("Personel bulunamadı.");
+
+            var actorId = actorPersonelId;
+
+            if (actorId.HasValue && actorId.Value == id)
+            {
+                var oldIsAdmin = old.Rol.HasFlag(PersonelRol.Admin);
+                var newIsAdmin = rol.HasFlag(PersonelRol.Admin);
+
+                if (oldIsAdmin && !newIsAdmin)
+                    return OperationResult.Fail("Kendi admin yetkinizi kaldıramazsınız.");
+            }
+
             var updRes = _repo.Update(id, adSoyad, kullaniciAdi, rol);
             if (!updRes.Success)
                 return updRes;
